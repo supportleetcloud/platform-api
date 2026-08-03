@@ -4,33 +4,24 @@ import { createApp } from '../src/app'
 
 jest.mock('passport', () => {
   const actual = jest.requireActual('passport')
+  const originalAuthenticate = actual.authenticate.bind(actual)
   return Object.assign(actual, {
-    authenticate: (_strategy: string, options: any = {}) => (req: any, res: any, next: any) => {
-      if (_strategy === 'session') {
-        // passport.session() middleware - deserialize user from passport.passport object
-        if (req._passport?.instance) {
-          const passport = req._passport.instance
-          if (req.session?.passport?.user) {
-            // Call deserializeUser to get the full user object
-            // For testing, we just set the user directly since we're using a mocked flow
-            req.user = { id: 'test-user-id', username: 'octocat', avatarUrl: null, isAdmin: true }
-          }
-        }
-        return next()
+    authenticate: (strategy: string, ...args: any[]) => {
+      // Delegate to real authenticate for session strategy so that real deserializeUser
+      // and DB lookups are exercised; only mock the github strategy for OAuth testing
+      if (strategy === 'session') {
+        return originalAuthenticate(strategy, ...args)
       }
 
-      const isCallback = req.path.includes('callback')
-      if (isCallback) {
-        req.user = { id: 'test-user-id', username: 'octocat', avatarUrl: null, isAdmin: true }
-        req.login(req.user, (err: Error) => {
-          if (err) {
-            return next(err)
-          }
-          // After login, continue to the next handler which redirects to dashboard
-          next()
-        })
-      } else {
-        res.redirect('https://github.com/login/oauth/authorize')
+      // Mock github strategy
+      return (req: any, _res: any, next: any) => {
+        const isCallback = req.path.includes('callback')
+        if (isCallback) {
+          req.user = { id: 'test-user-id', username: 'octocat', avatarUrl: null, isAdmin: true }
+          req.login(req.user, (err: Error) => next(err))
+        } else {
+          _res.redirect('https://github.com/login/oauth/authorize')
+        }
       }
     },
   })
