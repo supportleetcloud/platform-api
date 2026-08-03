@@ -7,7 +7,10 @@ authRouter.get('/auth/github', passport.authenticate('github', { scope: ['user:e
 
 authRouter.get(
   '/auth/github/callback',
-  passport.authenticate('github', { failureRedirect: '/' }),
+  // '/' resolves against the *backend* origin (http://localhost:4000/), which has no route
+  // — a failed login 404'd instead of returning the user to the app. Same fallback shape as
+  // the logout route below.
+  passport.authenticate('github', { failureRedirect: process.env.FRONTEND_URL ?? '/' }),
   (_req, res) => {
     res.redirect(`${process.env.FRONTEND_URL}/dashboard`)
   }
