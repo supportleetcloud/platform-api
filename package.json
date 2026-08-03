@@ -1,0 +1,5 @@
+{
+  "name": "practice-platform",
+  "private": true,
+  "workspaces": ["backend", "frontend"]
+}
