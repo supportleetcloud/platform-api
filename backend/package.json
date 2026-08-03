@@ -13,6 +13,7 @@
     "@prisma/client": "6.19.3",
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "express-session": "^1.19.0",
     "passport": "^0.7.0",
