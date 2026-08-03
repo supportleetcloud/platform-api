@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [me, setMe] = useState<Me | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
@@ -24,15 +25,23 @@ export default function DashboardPage() {
           router.replace('/')
           return null
         }
+        if (res.status !== 200) {
+          throw new Error(`unexpected status ${res.status}`)
+        }
         return res.json()
       })
       .then((data) => {
         if (data) setMe(data)
         setLoading(false)
       })
+      .catch(() => {
+        setError(true)
+        setLoading(false)
+      })
   }, [router])
 
   if (loading) return <p>Loading...</p>
+  if (error) return <p>Something went wrong loading your dashboard.</p>
   if (!me) return null
 
   return (

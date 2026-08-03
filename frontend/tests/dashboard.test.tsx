@@ -35,4 +35,16 @@ describe('DashboardPage', () => {
       expect(replaceMock).toHaveBeenCalledWith('/')
     })
   })
+
+  it('shows an error message instead of an infinite spinner when the backend request fails', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ status: 500 }) as any
+
+    render(<DashboardPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/something went wrong loading your dashboard/i)).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+  })
 })
