@@ -7,6 +7,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// Session store table for `connect-pg-simple`. The library queries these exact lowercase
+/// identifiers directly (see node_modules/connect-pg-simple/table.sql), so the @map names
+/// and column types must not change. It's modelled here — rather than left to
+/// createTableIfMissing — so it lives inside Prisma's migration history and `prisma migrate
+/// dev` doesn't treat it as drift and drop it. Nothing in application code reads it via Prisma.
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+  @@map("session")
+}
+
 model User {
   id        String   @id @default(uuid())
   githubId  String   @unique

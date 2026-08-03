@@ -25,9 +25,19 @@ export function createApp(deps: { prisma?: PrismaClient } = {}) {
   const PgSession = connectPgSimple(session)
   const sessionPool = new Pool({ connectionString: process.env.DATABASE_URL })
 
+  // Fail fast rather than booting a production deploy on a public, forgeable secret:
+  // anyone who reads this repo could otherwise mint valid session cookies.
+  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET is required in production')
+  }
+
   app.use(
     session({
-      store: new PgSession({ pool: sessionPool, createTableIfMissing: true }),
+      // createTableIfMissing is off: the `session` table is owned by Prisma's migration
+      // history (prisma/migrations/*_add_session_table). Letting connect-pg-simple create
+      // it at runtime put it outside that history, so `prisma migrate dev` saw it as drift
+      // and would have generated a DROP for it.
+      store: new PgSession({ pool: sessionPool, createTableIfMissing: false }),
       secret: process.env.SESSION_SECRET ?? 'dev-secret',
       resave: false,
       saveUninitialized: false,
