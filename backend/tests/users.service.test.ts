@@ -3,6 +3,10 @@ import { findOrCreateUserByGithubProfile, isAllowlistedAdmin } from '../src/user
 
 const prisma = new PrismaClient()
 
+afterEach(() => {
+  delete process.env.ADMIN_GITHUB_USERNAMES
+})
+
 describe('users/service', () => {
   beforeEach(async () => {
     await prisma.user.deleteMany()
