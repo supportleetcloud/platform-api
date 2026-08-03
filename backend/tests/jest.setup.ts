@@ -17,3 +17,9 @@ process.env.GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || 'test-cli
 process.env.GITHUB_CALLBACK_URL =
   process.env.GITHUB_CALLBACK_URL || 'http://localhost:4000/auth/github/callback'
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret'
+// FRONTEND_URL: auth/routes.ts bakes `failureRedirect` in at router-construction time and
+// builds the post-login redirect from this value. Unset, the success redirect would be the
+// literal string "undefined/dashboard" — which still satisfies a `toContain('/dashboard')`
+// assertion, so tests would pass on a URL no browser could follow. Setting it here keeps
+// the asserted redirects realistic.
+process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
