@@ -33,6 +33,26 @@ the handshake otherwise. Use a separate OAuth App per environment (local, stagin
 6. `cd backend && npm run dev` (port 4000)
 7. `cd frontend && npm install && npm run dev` (port 3000)
 
+## Run with Docker
+
+Runs Postgres, the backend, and the frontend in containers — you still need a GitHub OAuth
+App (previous section) since the backend refuses to boot without real credentials.
+
+1. `cp backend/.env.example backend/.env`, then fill in `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
+   and `SESSION_SECRET` (leave `DATABASE_URL`/`PORT`/`FRONTEND_URL` alone — compose overrides
+   those for the container network regardless of what's in the file).
+2. `docker compose up --build`
+3. Open `http://localhost:3000`.
+
+The backend container runs `prisma migrate deploy` against the compose Postgres on every
+start, so migrations apply automatically — no manual `createdb`/`migrate dev` step needed.
+Postgres data persists in the `postgres-data` named volume across restarts; `docker compose
+down -v` wipes it.
+
+To change `NEXT_PUBLIC_BACKEND_URL` (e.g. deploying frontend/backend on different hosts),
+edit the `args.NEXT_PUBLIC_BACKEND_URL` build arg in `docker-compose.yml` — it's baked into
+the frontend's client bundle at build time, so a plain runtime env var won't take effect.
+
 ## Running tests
 
 Substitute your OS username (`whoami`) for `YOUR_OS_USERNAME`, or use the `$(whoami)` form
