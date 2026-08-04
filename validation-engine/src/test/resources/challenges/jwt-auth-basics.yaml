@@ -1,0 +1,43 @@
+id: jwt-auth-basics
+title: "JWT-protected profile endpoint"
+category: auth
+checks:
+  - name: "POST /login returns a token"
+    request:
+      method: POST
+      path: /login
+      body: { username: "test-user", password: "test-pass" }
+    expect:
+      status: 200
+      json: { token: exists }
+    points: 5
+
+  - name: "GET /profile with valid token succeeds"
+    request:
+      method: GET
+      path: /profile
+      headers:
+        Authorization: "Bearer {{steps[0].response.json.token}}"
+    expect:
+      status: 200
+      jwtClaims:
+        sub: exists
+    points: 10
+
+  - name: "GET /profile with no token is rejected"
+    request:
+      method: GET
+      path: /profile
+    expect:
+      status: 401
+    points: 5
+
+  - name: "GET /profile with malformed token is rejected"
+    request:
+      method: GET
+      path: /profile
+      headers:
+        Authorization: "Bearer not-a-real-token"
+    expect:
+      status: 401
+    points: 5
