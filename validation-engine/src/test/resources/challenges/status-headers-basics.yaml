@@ -1,0 +1,21 @@
+id: status-headers-basics
+title: "Status codes and headers"
+category: status
+checks:
+  - name: "GET /health returns 200 with expected headers"
+    request:
+      method: GET
+      path: /health
+    expect:
+      status: 200
+      headers:
+        X-Service: "todo-api"
+        Content-Type: "regex:application/json.*"
+    points: 10
+  - name: "GET /missing returns 404"
+    request:
+      method: GET
+      path: /missing
+    expect:
+      status: 404
+    points: 5
