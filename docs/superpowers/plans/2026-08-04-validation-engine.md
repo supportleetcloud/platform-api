@@ -2262,10 +2262,13 @@ git commit -m "feat: validate response bodies against a bundled JSON Schema"
 
 ## Task 10: OpenApiAssertion
 
+**Note (post-implementation correction):** the plan's `OpenApiAssertion` code below was mostly right — `OpenApiInteractionValidator`, `SimpleRequest.Builder`, `SimpleResponse.Builder`, `ValidationReport` all matched `swagger-request-validator-core:3.0.0`'s real API — but two things needed fixing: (1) the plan's code never sets the response's `Content-Type` on `SimpleResponse.Builder`, and without it the library silently skips body-schema validation (a false pass) — the real code adds `responseBuilder.withContentType(...)` from `step.response().header("Content-Type")`; (2) `swagger-request-validator-core:3.0.0` internally calls `com.networknt.schema.SchemaRegistry.getSchema(JsonNode)` compiled against `json-schema-validator:2.0.1`'s classic-Jackson API, which conflicts with Task 9's `3.0.6` pin (whose `JsonNode` moved to an unrelated `tools.jackson` package) — Maven can only resolve one version of a direct dependency, so `pom.xml`'s `json-schema-validator` pin was changed to `2.0.1` (down from Task 9's `3.0.6`; see Task 9's note above, now superseded on this one point). `JsonSchemaAssertion.java` itself needed no code changes since `2.0.1` already has the same API surface Task 9 used. See commit `b7f1a4d` for the real code.
+
 **Files:**
 - Create: `validation-engine/src/test/resources/openapi/todo-api.yaml`
 - Create: `validation-engine/src/test/resources/challenges/todo-api-contract.yaml`
 - Modify: `validation-engine/src/main/java/com/practiceplatform/validationengine/assertions/OpenApiAssertion.java`
+- Modify: `validation-engine/pom.xml` (`json-schema-validator` version `3.0.6` → `2.0.1`)
 - Test: `validation-engine/src/test/java/com/practiceplatform/validationengine/assertions/OpenApiAssertionTest.java`
 
 **Interfaces:**
