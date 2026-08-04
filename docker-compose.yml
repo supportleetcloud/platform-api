@@ -28,6 +28,12 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/practice_platform
       PORT: 4000
       FRONTEND_URL: http://localhost:3000
+      # The image sets NODE_ENV=production, which makes the session cookie
+      # `secure: true` (backend/src/app.ts) — correct behind a real TLS
+      # terminator, but this compose setup serves plain HTTP on localhost,
+      # so the browser silently drops the cookie and every request looks
+      # unauthenticated. Override for this local/plain-HTTP context.
+      NODE_ENV: development
     ports:
       - "4000:4000"
     depends_on:
