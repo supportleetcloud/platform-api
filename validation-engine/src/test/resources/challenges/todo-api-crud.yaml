@@ -1,0 +1,38 @@
+id: todo-api-crud
+title: "Build a Todo CRUD API"
+category: crud
+checks:
+  - name: "POST /todos creates a todo"
+    request:
+      method: POST
+      path: /todos
+      headers:
+        Content-Type: application/json
+      body:
+        title: "Buy milk"
+    expect:
+      status: 201
+      json:
+        title: "Buy milk"
+        completed: false
+      headers:
+        Location: exists
+    points: 10
+
+  - name: "GET /todos/{id} returns the created todo"
+    request:
+      method: GET
+      path: "/todos/{{steps[0].response.json.id}}"
+    expect:
+      status: 200
+      json:
+        title: "Buy milk"
+    points: 10
+
+  - name: "DELETE /todos/{id} removes it"
+    request:
+      method: DELETE
+      path: "/todos/{{steps[0].response.json.id}}"
+    expect:
+      status: 204
+    points: 5
