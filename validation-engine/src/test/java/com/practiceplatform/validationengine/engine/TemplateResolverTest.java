@@ -106,4 +106,12 @@ class TemplateResolverTest {
         assertThrows(TemplateResolver.ResolutionException.class,
                 () -> resolver.resolveBody(Map.of("todoId", "{{steps[0].response.json.missing}}"), steps));
     }
+
+    @Test
+    void throwsResolutionExceptionOnOutOfIntRangeIndex() {
+        List<StepResult> steps = List.of(stepWithJsonBody("{}"));
+
+        assertThrows(TemplateResolver.ResolutionException.class,
+                () -> resolver.resolveString("{{steps[99999999999999999999].response.status}}", steps));
+    }
 }

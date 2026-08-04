@@ -68,7 +68,12 @@ public class TemplateResolver {
         if (!matcher.matches()) {
             throw new ResolutionException("unrecognized template expression: " + expression);
         }
-        int index = Integer.parseInt(matcher.group(1));
+        int index;
+        try {
+            index = Integer.parseInt(matcher.group(1));
+        } catch (NumberFormatException e) {
+            throw new ResolutionException("invalid step index: " + matcher.group(1));
+        }
         String path = matcher.group(2);
 
         if (index < 0 || index >= priorSteps.size()) {
