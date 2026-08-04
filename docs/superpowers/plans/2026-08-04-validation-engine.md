@@ -3052,12 +3052,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @RestController
 public class RunController {
+
+    private static final Logger log = LoggerFactory.getLogger(RunController.class);
 
     private final ChallengeYamlParser parser;
     private final SsrfGuardedHttpClient httpClient;
@@ -3087,12 +3092,14 @@ public class RunController {
             ScoreCalculator.ScoredRun scored = new ScoreCalculator().calculate(steps);
             result = RunResult.completed(request.jobId(), scored);
         } catch (Exception e) {
+            log.warn("run {} failed: {}", request.jobId(), e.getMessage(), e);
             result = RunResult.error(request.jobId(), e.getMessage());
         }
 
         try {
             webhookNotifier.notify(request.webhookUrl(), result);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.warn("webhook delivery failed for job {}: {}", request.jobId(), e.getMessage(), e);
         }
     }
 }
