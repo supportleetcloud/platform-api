@@ -2105,9 +2105,12 @@ git commit -m "feat: decode and assert JWT claims from the current request's Aut
 
 ## Task 9: JsonSchemaAssertion
 
+**Note (post-implementation correction):** `com.networknt:json-schema-validator:3.0.6` (the version actually resolvable on Maven Central — see Task 1's correction) is a full API rewrite from the 1.x line this section originally assumed: `SchemaRegistry`/`Schema`/`SpecificationVersion`/`Error` replace `JsonSchemaFactory`/`JsonSchema`/`SpecVersion`/`ValidationMessage`, and it depends on `tools.jackson.core` (Jackson 3.x) rather than `com.fasterxml.jackson.core`. The actual implementation validates the raw response body string via `Schema.validate(String, InputFormat.JSON)` instead of constructing a `JsonNode`, to avoid bridging two incompatible Jackson major versions. It also required bumping the `jackson-bom.version` property in `validation-engine/pom.xml` to `2.21.5` (Spring Boot's documented override point), because the transitive `jackson-databind:3.1.4` needs a `jackson-annotations` class newer than Spring Boot 3.3.5's pinned `2.17.2`. See commit `6040937` for the real code. The code block below is kept for historical record of the original (incorrect) assumption; follow the actual implementation, not this block.
+
 **Files:**
 - Create: `validation-engine/src/test/resources/challenges/todo-schema.json`
 - Modify: `validation-engine/src/main/java/com/practiceplatform/validationengine/assertions/JsonSchemaAssertion.java`
+- Modify: `validation-engine/pom.xml` (add `jackson-bom.version` override — not anticipated by the original plan)
 - Test: `validation-engine/src/test/java/com/practiceplatform/validationengine/assertions/JsonSchemaAssertionTest.java`
 
 **Interfaces:**
