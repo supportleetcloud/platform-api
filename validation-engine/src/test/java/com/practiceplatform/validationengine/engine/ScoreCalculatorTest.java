@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ScoreCalculatorTest {
 
@@ -53,6 +54,7 @@ class ScoreCalculatorTest {
         assertEquals(0, scored.score());
         assertEquals("failed", scored.checks().get(0).status());
         assertEquals(0, scored.checks().get(0).pointsEarned());
+        assertEquals("connection refused", scored.checks().get(0).reason());
     }
 
     @Test
@@ -63,6 +65,14 @@ class ScoreCalculatorTest {
 
         assertEquals("skipped", scored.checks().get(0).status());
         assertEquals(0, scored.checks().get(0).pointsEarned());
+        assertEquals("step index out of range: 5", scored.checks().get(0).reason());
+    }
+
+    @Test
+    void reasonIsNullForNormallyEvaluatedPassedCheck() {
+        ScoreCalculator.ScoredRun scored = new ScoreCalculator().calculate(List.of(passedStep("a", 10)));
+
+        assertNull(scored.checks().get(0).reason());
     }
 
     @Test

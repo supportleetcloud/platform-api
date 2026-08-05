@@ -1,13 +1,16 @@
 package com.practiceplatform.validationengine.engine;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.List;
 
 public class ScoreCalculator {
 
     public record AssertionDto(String type, boolean passed, String detail) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record CheckResult(String name, String status, int points, int pointsEarned,
-                               List<AssertionDto> assertions) {}
+                               List<AssertionDto> assertions, String reason) {}
 
     public record ScoredRun(int score, List<CheckResult> checks) {}
 
@@ -33,6 +36,6 @@ public class ScoreCalculator {
         List<AssertionDto> assertions = step.assertions().stream()
                 .map(a -> new AssertionDto(a.type(), a.passed(), a.detail()))
                 .toList();
-        return new CheckResult(step.checkName(), status, step.points(), pointsEarned, assertions);
+        return new CheckResult(step.checkName(), status, step.points(), pointsEarned, assertions, step.reason());
     }
 }
