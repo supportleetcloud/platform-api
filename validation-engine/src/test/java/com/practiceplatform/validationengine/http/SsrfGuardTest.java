@@ -21,7 +21,9 @@ class SsrfGuardTest {
             "169.254.169.254",
             "::1",
             "fc00::1",
-            "fd12:3456::1"
+            "fd12:3456::1",
+            "0.0.0.0",
+            "::"
     })
     void blocksAddressesInReservedRanges(String ip) {
         assertThrows(SsrfGuard.BlockedHostException.class, () -> guard.check(ip));

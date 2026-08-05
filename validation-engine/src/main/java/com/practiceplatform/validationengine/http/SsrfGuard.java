@@ -20,7 +20,8 @@ public class SsrfGuard {
     }
 
     protected boolean isBlocked(InetAddress address) {
-        if (address.isLoopbackAddress() || address.isLinkLocalAddress() || address.isSiteLocalAddress()) {
+        if (address.isLoopbackAddress() || address.isLinkLocalAddress() || address.isSiteLocalAddress()
+                || address.isAnyLocalAddress()) {
             return true;
         }
         byte[] bytes = address.getAddress();
