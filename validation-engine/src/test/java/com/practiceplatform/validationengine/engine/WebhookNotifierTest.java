@@ -10,6 +10,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WebhookNotifierTest {
@@ -25,6 +26,10 @@ class WebhookNotifierTest {
         server.createContext("/webhook", exchange -> {
             capturedBody.set(new String(exchange.getRequestBody().readAllBytes()));
             exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        server.createContext("/webhook-failing", exchange -> {
+            exchange.sendResponseHeaders(500, -1);
             exchange.close();
         });
         server.start();
@@ -45,5 +50,16 @@ class WebhookNotifierTest {
         assertTrue(capturedBody.get().contains("\"jobId\":\"job-1\""));
         assertTrue(capturedBody.get().contains("\"status\":\"completed\""));
         assertTrue(capturedBody.get().contains("\"score\":100"));
+    }
+
+    @Test
+    void doesNotThrowWhenWebhookReceiverRespondsWithServerError() {
+        ScoreCalculator.ScoredRun scored = new ScoreCalculator.ScoredRun(100, List.of());
+        RunResult result = RunResult.completed("job-2", scored);
+
+        // A non-2xx response from the receiver must not be treated as a delivery exception --
+        // notify() keeps its fire-and-forget contract and only logs a warning (see WebhookNotifier).
+        assertDoesNotThrow(() ->
+                new WebhookNotifier().notify("http://localhost:" + port + "/webhook-failing", result));
     }
 }
