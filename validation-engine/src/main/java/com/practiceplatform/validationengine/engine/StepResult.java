@@ -50,7 +50,12 @@ public class StepResult {
     }
 
     public void finalizeStatus() {
-        this.status = assertions.stream().allMatch(AssertionResult::passed) ? Status.PASSED : Status.FAILED;
+        // An empty assertions list means the check's `expect` block produced zero recognized
+        // assertions (e.g. `expect: {}`, or previously a typo'd key before strict YAML parsing was
+        // enforced). allMatch() on an empty stream is vacuously true, which would otherwise score
+        // such a check as PASSED with no evidence at all — treat it as FAILED instead.
+        this.status = !assertions.isEmpty() && assertions.stream().allMatch(AssertionResult::passed)
+                ? Status.PASSED : Status.FAILED;
     }
 
     public String checkName() { return checkName; }
