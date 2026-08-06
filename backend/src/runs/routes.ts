@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { requireAuth } from '../auth/middleware'
-import { submitRun, RunsServiceConfig } from './service'
+import { submitRun, getRun, RunsServiceConfig } from './service'
 
 export type RunsRouterConfig = RunsServiceConfig
 
@@ -40,6 +40,18 @@ export function createRunsRouter(
       return
     }
     res.status(502).json({ error: result.error })
+  })
+
+  router.get('/api/runs/:id', requireAuth, async (req, res) => {
+    const user = req.user as { id: string }
+    const result = await getRun(prisma, config.runTimeoutMs, { runId: req.params.id, userId: user.id })
+
+    if (result.kind === 'not_found') {
+      res.status(404).json({ error: 'run_not_found' })
+      return
+    }
+
+    res.status(200).json(result.run)
   })
 
   return router

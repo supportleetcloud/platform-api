@@ -249,3 +249,97 @@ describe('POST /api/runs', () => {
     expect(res.status).toBe(403)
   })
 })
+
+describe('GET /api/runs/:id', () => {
+  beforeAll(async () => {
+    await prisma.user.upsert({
+      where: { id: TEST_USER_ID },
+      update: {},
+      create: { id: TEST_USER_ID, githubId: 'gh-runs-routes-test', username: 'octocat', isPaid: false },
+    })
+    await prisma.challenge.upsert({
+      where: { id: CHALLENGE_ID },
+      update: {},
+      create: { id: CHALLENGE_ID, title: 'Todo CRUD', category: 'crud', points: 25, yamlPath: 'todo-api-crud.yaml' },
+    })
+  })
+
+  afterEach(async () => {
+    await prisma.run.deleteMany({ where: { userId: TEST_USER_ID } })
+  })
+
+  it('returns the run to its owner', async () => {
+    const run = await prisma.run.create({
+      data: {
+        userId: TEST_USER_ID,
+        challengeId: CHALLENGE_ID,
+        targetUrl: 'https://candidate.example.com',
+        status: 'completed',
+        score: 90,
+        callbackToken: 'unused',
+      },
+    })
+
+    const app = createApp({ prisma, fetchImpl: jest.fn() as any })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get(`/api/runs/${run.id}`)
+    expect(res.status).toBe(200)
+    expect(res.body.status).toBe('completed')
+    expect(res.body.score).toBe(90)
+  })
+
+  it('returns 404 for a run owned by someone else', async () => {
+    const otherUserId = 'runs-routes-test-other-user'
+    await prisma.user.upsert({
+      where: { id: otherUserId },
+      update: {},
+      create: { id: otherUserId, githubId: 'gh-other', username: 'other' },
+    })
+    const run = await prisma.run.create({
+      data: {
+        userId: otherUserId,
+        challengeId: CHALLENGE_ID,
+        targetUrl: 'https://candidate.example.com',
+        status: 'completed',
+        callbackToken: 'unused',
+      },
+    })
+
+    const app = createApp({ prisma, fetchImpl: jest.fn() as any })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get(`/api/runs/${run.id}`)
+    expect(res.status).toBe(404)
+
+    await prisma.run.delete({ where: { id: run.id } })
+    await prisma.user.delete({ where: { id: otherUserId } })
+  })
+
+  it('reports timed_out for a stale pending run without changing the stored status', async () => {
+    const staleDate = new Date(Date.now() - 10 * 60 * 1000)
+    const run = await prisma.run.create({
+      data: {
+        userId: TEST_USER_ID,
+        challengeId: CHALLENGE_ID,
+        targetUrl: 'https://candidate.example.com',
+        status: 'pending',
+        callbackToken: 'unused',
+        createdAt: staleDate,
+      },
+    })
+
+    const app = createApp({ prisma, fetchImpl: jest.fn() as any })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get(`/api/runs/${run.id}`)
+    expect(res.status).toBe(200)
+    expect(res.body.status).toBe('timed_out')
+
+    const stored = await prisma.run.findUnique({ where: { id: run.id } })
+    expect(stored?.status).toBe('pending')
+  })
+})

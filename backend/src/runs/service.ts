@@ -10,6 +10,7 @@ const FREE_TIER_ATTEMPT_LIMIT = 10
 export type RunsServiceConfig = {
   validationEngineUrl: string
   webhookBaseUrl: string
+  runTimeoutMs: number
 }
 
 export type SubmitRunInput = {
@@ -132,4 +133,50 @@ export async function submitRun(
   }
 
   return { kind: 'accepted', runId: jobId }
+}
+
+export type GetRunInput = { runId: string; userId: string }
+
+export type GetRunResult =
+  | { kind: 'not_found' }
+  | {
+      kind: 'found'
+      run: {
+        runId: string
+        challengeId: string
+        targetUrl: string
+        status: string
+        score: number | null
+        checks: unknown
+        error: string | null
+        createdAt: Date
+      }
+    }
+
+export async function getRun(
+  prisma: PrismaClient,
+  runTimeoutMs: number,
+  input: GetRunInput
+): Promise<GetRunResult> {
+  const run = await prisma.run.findUnique({ where: { id: input.runId } })
+  if (!run || run.userId !== input.userId) {
+    return { kind: 'not_found' }
+  }
+
+  const isStale = run.status === 'pending' && Date.now() - run.createdAt.getTime() > runTimeoutMs
+  const status = isStale ? 'timed_out' : run.status
+
+  return {
+    kind: 'found',
+    run: {
+      runId: run.id,
+      challengeId: run.challengeId,
+      targetUrl: run.targetUrl,
+      status,
+      score: run.score,
+      checks: run.checks,
+      error: run.error,
+      createdAt: run.createdAt,
+    },
+  }
 }

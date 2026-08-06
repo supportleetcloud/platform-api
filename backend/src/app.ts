@@ -55,11 +55,12 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
 
   const validationEngineUrl = process.env.VALIDATION_ENGINE_URL ?? 'http://localhost:8080'
   const webhookBaseUrl = process.env.WEBHOOK_BASE_URL ?? 'http://localhost:4000'
+  const runTimeoutMs = Number(process.env.RUN_TIMEOUT_MS ?? 300000)
 
   app.use(authRouter)
   app.use(meRouter)
   app.use(createChallengesRouter(prisma))
-  app.use(createRunsRouter(prisma, fetchImpl, { validationEngineUrl, webhookBaseUrl }))
+  app.use(createRunsRouter(prisma, fetchImpl, { validationEngineUrl, webhookBaseUrl, runTimeoutMs }))
   app.use(createRunsWebhookRouter(prisma))
 
   app.get('/health', (_req, res) => {
