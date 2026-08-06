@@ -101,6 +101,37 @@ describe('POST /api/runs', () => {
     expect(res.status).toBe(400)
   })
 
+  it('rejects a missing challengeId with 400 instead of hanging or crashing', async () => {
+    const fetchImpl = jest.fn() as any
+    const app = createApp({ prisma, fetchImpl })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.post('/api/runs').send({
+      targetUrl: 'https://candidate.example.com',
+      confirmedAuthorization: true,
+    })
+
+    expect(res.status).toBe(400)
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('rejects a non-string challengeId with 400 instead of hanging or crashing', async () => {
+    const fetchImpl = jest.fn() as any
+    const app = createApp({ prisma, fetchImpl })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.post('/api/runs').send({
+      challengeId: { $ne: null },
+      targetUrl: 'https://candidate.example.com',
+      confirmedAuthorization: true,
+    })
+
+    expect(res.status).toBe(400)
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it('returns 502 and marks the Run errored when the validation engine is unreachable', async () => {
     const fetchImpl = jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED')) as any
     const app = createApp({ prisma, fetchImpl })

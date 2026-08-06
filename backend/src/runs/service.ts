@@ -72,6 +72,9 @@ export async function submitRun(
   if (!isHttpUrl(input.targetUrl)) {
     return { kind: 'validation_error', error: 'targetUrl must be a valid http(s) URL' }
   }
+  if (typeof input.challengeId !== 'string' || input.challengeId.length === 0) {
+    return { kind: 'validation_error', error: 'challengeId is required' }
+  }
 
   const challenge = await prisma.challenge.findUnique({ where: { id: input.challengeId } })
   if (!challenge) {
