@@ -10,9 +10,11 @@ import { configurePassport } from './auth/passport'
 import { authRouter } from './auth/routes'
 import { meRouter } from './users/routes'
 import { createChallengesRouter } from './challenges/routes'
+import { createRunsRouter } from './runs/routes'
 
-export function createApp(deps: { prisma?: PrismaClient } = {}) {
+export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetch } = {}) {
   const prisma = deps.prisma ?? defaultPrisma
+  const fetchImpl = deps.fetchImpl ?? fetch
   const app = express()
 
   app.use(
@@ -50,9 +52,13 @@ export function createApp(deps: { prisma?: PrismaClient } = {}) {
   app.use(passport.initialize())
   app.use(passport.session())
 
+  const validationEngineUrl = process.env.VALIDATION_ENGINE_URL ?? 'http://localhost:8080'
+  const webhookBaseUrl = process.env.WEBHOOK_BASE_URL ?? 'http://localhost:4000'
+
   app.use(authRouter)
   app.use(meRouter)
   app.use(createChallengesRouter(prisma))
+  app.use(createRunsRouter(prisma, fetchImpl, { validationEngineUrl, webhookBaseUrl }))
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' })

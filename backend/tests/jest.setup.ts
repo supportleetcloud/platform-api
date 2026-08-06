@@ -23,3 +23,9 @@ process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret'
 // assertion, so tests would pass on a URL no browser could follow. Setting it here keeps
 // the asserted redirects realistic.
 process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
+// VALIDATION_ENGINE_URL: runs.routes.test.ts asserts the exact URL submitRun() calls
+// fetchImpl with (`http://validation-engine.test/runs`), so this has to be a fixed,
+// recognizable value rather than app.ts's production default of localhost:8080 — a
+// dedicated host makes it obvious in assertions that this is the mocked engine, not a
+// real one someone might actually be running on 8080 locally.
+process.env.VALIDATION_ENGINE_URL = process.env.VALIDATION_ENGINE_URL || 'http://validation-engine.test'
