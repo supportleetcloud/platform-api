@@ -32,6 +32,8 @@ the handshake otherwise. Use a separate OAuth App per environment (local, stagin
    `cd backend && DATABASE_URL="postgresql://$(whoami)@localhost:5432/practice_platform_test" npx prisma migrate deploy`
 6. `cd backend && npm run dev` (port 4000)
 7. `cd frontend && npm install && npm run dev` (port 3000)
+8. Seed the challenge catalog and (optionally) run the validation engine locally — see
+   "Challenges & the validation engine" below.
 
 ## Run with Docker
 
@@ -65,3 +67,19 @@ below verbatim — `DATABASE_URL` needs an explicit user, same as `backend/.env`
 
 Add a comma-separated list of GitHub usernames to `ADMIN_GITHUB_USERNAMES` in `backend/.env`
 to grant admin flag on login.
+
+## Challenges & the validation engine
+
+The backend orchestrates challenge runs by calling the Java `validation-engine` service and
+receiving results via a webhook it exposes itself — see
+`docs/superpowers/specs/2026-08-06-node-orchestrator-design.md` for the full design.
+
+1. Seed the challenge catalog (run once after `prisma migrate dev`, and again whenever a YAML
+   file under `backend/challenges/` changes): `cd backend && npm run seed:challenges`
+2. Run the validation engine alongside the backend: `cd validation-engine && mvn spring-boot:run`
+   (listens on port 8080 by default, matching `VALIDATION_ENGINE_URL`'s default in
+   `backend/.env.example`).
+3. `WEBHOOK_BASE_URL` must be a host the validation engine can actually reach. The
+   `http://localhost:4000` default works when both run on the same machine; in any other
+   deployment (e.g. the validation engine on a separate host or container) it needs to be the
+   backend's real reachable address.
