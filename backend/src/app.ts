@@ -11,6 +11,7 @@ import { authRouter } from './auth/routes'
 import { meRouter } from './users/routes'
 import { createChallengesRouter } from './challenges/routes'
 import { createRunsRouter } from './runs/routes'
+import { createRunsWebhookRouter } from './runs/webhook'
 
 export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetch } = {}) {
   const prisma = deps.prisma ?? defaultPrisma
@@ -59,6 +60,7 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
   app.use(meRouter)
   app.use(createChallengesRouter(prisma))
   app.use(createRunsRouter(prisma, fetchImpl, { validationEngineUrl, webhookBaseUrl }))
+  app.use(createRunsWebhookRouter(prisma))
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' })
