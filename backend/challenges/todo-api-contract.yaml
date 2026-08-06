@@ -1,0 +1,17 @@
+id: todo-api-contract
+title: "Todo API conforms to its OpenAPI contract"
+category: contract
+openapiSpec: openapi/todo-api.yaml
+checks:
+  - name: "POST /todos response matches OpenAPI spec"
+    request:
+      method: POST
+      path: /todos
+      headers:
+        Content-Type: application/json
+      body:
+        title: "Buy milk"
+    expect:
+      status: 201
+      matchesOpenApi: true
+    points: 10

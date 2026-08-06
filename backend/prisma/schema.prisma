@@ -30,3 +30,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Challenge {
+  id        String   @id
+  title     String
+  // Freeform, matches whatever the YAML's top-level `category:` field says
+  // (crud, contract, status, auth in the fixtures below) — no enum enforced.
+  category  String
+  points    Int
+  yamlPath  String
+  createdAt DateTime @default(now())
+}
