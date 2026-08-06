@@ -9,6 +9,7 @@ import { prisma as defaultPrisma } from './db/client'
 import { configurePassport } from './auth/passport'
 import { authRouter } from './auth/routes'
 import { meRouter } from './users/routes'
+import { createChallengesRouter } from './challenges/routes'
 
 export function createApp(deps: { prisma?: PrismaClient } = {}) {
   const prisma = deps.prisma ?? defaultPrisma
@@ -51,6 +52,7 @@ export function createApp(deps: { prisma?: PrismaClient } = {}) {
 
   app.use(authRouter)
   app.use(meRouter)
+  app.use(createChallengesRouter(prisma))
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' })
