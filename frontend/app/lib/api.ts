@@ -28,8 +28,12 @@ export function useResource<T>(path: string, opts: UseResourceOptions<T> = {}): 
   const [error, setError] = useState(false)
   const [notFound, setNotFound] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const generationRef = useRef(0)
+  const hasLoadedRef = useRef(false)
 
   useEffect(() => {
+    hasLoadedRef.current = false
+
     function stopInterval() {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
@@ -38,8 +42,15 @@ export function useResource<T>(path: string, opts: UseResourceOptions<T> = {}): 
     }
 
     function load() {
+      const generation = ++generationRef.current
+
+      function isCurrent() {
+        return generation === generationRef.current
+      }
+
       backendFetch(path)
         .then((res) => {
+          if (!isCurrent()) return null
           if (res.status === 401 && opts.redirectOn401) {
             router.replace('/')
             stopInterval()
@@ -57,14 +68,23 @@ export function useResource<T>(path: string, opts: UseResourceOptions<T> = {}): 
           return res.json()
         })
         .then((json) => {
+          if (!isCurrent()) return
           if (json === null || json === undefined) return
           setData(json)
           setLoading(false)
+          hasLoadedRef.current = true
           if (opts.pollMs && opts.stopPolling && opts.stopPolling(json)) {
             stopInterval()
           }
         })
         .catch(() => {
+          if (!isCurrent()) return
+          if (opts.pollMs && hasLoadedRef.current) {
+            // Transient failure mid-poll with last-known-good data already
+            // shown — let the next scheduled poll retry instead of
+            // replacing good data with an error.
+            return
+          }
           setError(true)
           setLoading(false)
           stopInterval()

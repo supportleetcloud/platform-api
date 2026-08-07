@@ -50,6 +50,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
   }
 
   if (challenge.loading) return <p>Loading...</p>
+  if (challenge.notFound) return <p>Challenge not found.</p>
   if (challenge.error) return <p>Could not load this challenge.</p>
   if (!challenge.data) return null
 

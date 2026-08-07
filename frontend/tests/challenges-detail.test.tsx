@@ -38,6 +38,16 @@ describe('ChallengeDetailPage', () => {
     expect(screen.getByText(/25 pts/)).toBeInTheDocument()
   })
 
+  it('shows "Challenge not found" for a 404', async () => {
+    mockFetch({ get: { status: 404, json: { error: 'challenge_not_found' } } })
+
+    render(<ChallengeDetailPage params={{ id: 'does-not-exist' }} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Challenge not found.')).toBeInTheDocument()
+    })
+  })
+
   it('submits and navigates to the run status page on success', async () => {
     mockFetch({
       get: { status: 200, json: CHALLENGE },

@@ -12,6 +12,14 @@ function jsonResponse(status: number, json?: unknown) {
   return Promise.resolve({ status, json: async () => json })
 }
 
+function deferred<T = unknown>() {
+  let resolve: (value: T) => void = () => {}
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 describe('RunStatusPage', () => {
   beforeEach(() => {
     replaceMock.mockReset()
@@ -54,6 +62,100 @@ describe('RunStatusPage', () => {
       await vi.advanceTimersByTimeAsync(4000)
     })
     expect(fetchMock.mock.calls.length).toBe(callsAfterCompletion)
+  })
+
+  it('does not let a stale, slow poll response overwrite a newer completed response', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const { promise: slowPollPromise, resolve: resolveSlowPoll } = deferred<{
+      status: number
+      json: () => Promise<unknown>
+    }>()
+
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() =>
+        jsonResponse(200, { runId: 'run-1', status: 'pending', score: null, checks: null, error: null })
+      )
+      .mockImplementationOnce(() => slowPollPromise)
+      .mockImplementationOnce(() =>
+        jsonResponse(200, {
+          runId: 'run-1',
+          status: 'completed',
+          score: 100,
+          checks: [{ name: 'check one', status: 'passed', points: 10, pointsEarned: 10 }],
+          error: null,
+        })
+      )
+    global.fetch = fetchMock as any
+
+    render(<RunStatusPage params={{ id: 'run-1' }} />)
+
+    await waitFor(() => expect(screen.getByText(/running your submission/i)).toBeInTheDocument())
+
+    // Poll #2 fires but stays in flight — its response has not resolved yet.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+
+    // Poll #3 fires and resolves immediately with the terminal, completed status.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+
+    await waitFor(() => expect(screen.getByText('Score: 100')).toBeInTheDocument())
+
+    // Now the stale poll #2 finally resolves, after poll #3 already rendered
+    // and cleared the interval. It must be discarded, not overwrite the
+    // completed state.
+    await act(async () => {
+      resolveSlowPoll(
+        await jsonResponse(200, { runId: 'run-1', status: 'pending', score: null, checks: null, error: null })
+      )
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(screen.getByText('Score: 100')).toBeInTheDocument()
+    expect(screen.queryByText(/running your submission/i)).not.toBeInTheDocument()
+  })
+
+  it('keeps polling and does not surface an error after a transient mid-poll failure', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() =>
+        jsonResponse(200, { runId: 'run-1', status: 'pending', score: null, checks: null, error: null })
+      )
+      .mockImplementationOnce(() => Promise.reject(new Error('network blip')))
+      .mockImplementationOnce(() =>
+        jsonResponse(200, {
+          runId: 'run-1',
+          status: 'completed',
+          score: 100,
+          checks: [{ name: 'check one', status: 'passed', points: 10, pointsEarned: 10 }],
+          error: null,
+        })
+      )
+    global.fetch = fetchMock as any
+
+    render(<RunStatusPage params={{ id: 'run-1' }} />)
+
+    await waitFor(() => expect(screen.getByText(/running your submission/i)).toBeInTheDocument())
+
+    // Poll #2 hits a transient failure — must not surface an error or stop polling.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+
+    expect(screen.getByText(/running your submission/i)).toBeInTheDocument()
+    expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument()
+
+    // Poll #3 succeeds, proving the interval survived the earlier failure.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+
+    await waitFor(() => expect(screen.getByText('Score: 100')).toBeInTheDocument())
+    expect(fetchMock.mock.calls.length).toBe(3)
   })
 
   it('shows the error message for a failed run', async () => {
