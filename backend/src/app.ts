@@ -62,7 +62,7 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
   app.use(meRouter)
   app.use(createChallengesRouter(prisma))
   app.use(createRunsRouter(prisma, fetchImpl, { validationEngineUrl, webhookBaseUrl, runTimeoutMs }))
-  app.use(createRunsWebhookRouter(prisma))
+  app.use(createRunsWebhookRouter(prisma, fetchImpl))
   app.use(createAdminRouter(prisma))
 
   app.get('/health', (_req, res) => {

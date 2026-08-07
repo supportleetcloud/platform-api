@@ -150,8 +150,20 @@ export type GetRunResult =
         checks: unknown
         error: string | null
         createdAt: Date
+        feedback: string | null
+        feedbackStatus: string
+        feedbackLocked: boolean
       }
     }
+
+async function isMostRecentCompletedRun(prisma: PrismaClient, userId: string, runId: string): Promise<boolean> {
+  const mostRecent = await prisma.run.findFirst({
+    where: { userId, status: 'completed' },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true },
+  })
+  return mostRecent?.id === runId
+}
 
 export async function getRun(
   prisma: PrismaClient,
@@ -166,6 +178,13 @@ export async function getRun(
   const isStale = run.status === 'pending' && Date.now() - run.createdAt.getTime() > runTimeoutMs
   const status = isStale ? 'timed_out' : run.status
 
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: input.userId } })
+  let feedbackLocked = false
+  if (!user.isPaid && run.status === 'completed') {
+    const isMostRecent = await isMostRecentCompletedRun(prisma, input.userId, run.id)
+    feedbackLocked = !isMostRecent
+  }
+
   return {
     kind: 'found',
     run: {
@@ -177,6 +196,9 @@ export async function getRun(
       checks: run.checks,
       error: run.error,
       createdAt: run.createdAt,
+      feedback: feedbackLocked ? null : run.feedback,
+      feedbackStatus: run.feedbackStatus,
+      feedbackLocked,
     },
   }
 }

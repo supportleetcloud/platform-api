@@ -131,4 +131,60 @@ describe('POST /api/webhooks/runs/:jobId', () => {
 
     expect(res.status).toBe(400)
   })
+
+  it('marks feedbackStatus pending on a completed callback and responds before feedback generation finishes', async () => {
+    await prisma.llmSettings.upsert({
+      where: { id: 'singleton' },
+      update: { provider: 'ollama', model: 'llama3.1', baseUrl: 'http://ollama.test', apiKeyEncrypted: null },
+      create: {
+        id: 'singleton',
+        provider: 'ollama',
+        model: 'llama3.1',
+        baseUrl: 'http://ollama.test',
+        apiKeyEncrypted: null,
+      },
+    })
+    await createPendingRun('webhook-test-run-6', 'correct-token')
+
+    let resolveFeedbackCall: (value: { ok: boolean; json: () => Promise<unknown> }) => void = () => {}
+    const slowFeedbackCall = new Promise((resolve) => {
+      resolveFeedbackCall = resolve as typeof resolveFeedbackCall
+    })
+    const fetchImpl = jest.fn().mockImplementation(() => slowFeedbackCall)
+    const app = createApp({ prisma, fetchImpl })
+
+    const res = await request(app)
+      .post('/api/webhooks/runs/webhook-test-run-6?token=correct-token')
+      .send({ status: 'completed', score: 90, checks: [] })
+
+    expect(res.status).toBe(200)
+
+    const run = await prisma.run.findUnique({ where: { id: 'webhook-test-run-6' } })
+    expect(run?.status).toBe('completed')
+    expect(run?.feedbackStatus).toBe('pending')
+
+    resolveFeedbackCall({ ok: true, json: async () => ({ response: 'Nice work.' }) })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    const resolved = await prisma.run.findUnique({ where: { id: 'webhook-test-run-6' } })
+    expect(resolved?.feedbackStatus).toBe('ready')
+    expect(resolved?.feedback).toBe('Nice work.')
+
+    await prisma.llmSettings.deleteMany({})
+  })
+
+  it('leaves feedbackStatus not_applicable and never calls the LLM on an error callback', async () => {
+    await createPendingRun('webhook-test-run-7', 'correct-token')
+    const fetchImpl = jest.fn()
+    const app = createApp({ prisma, fetchImpl })
+
+    const res = await request(app)
+      .post('/api/webhooks/runs/webhook-test-run-7?token=correct-token')
+      .send({ status: 'error', error: 'boom' })
+
+    expect(res.status).toBe(200)
+    const run = await prisma.run.findUnique({ where: { id: 'webhook-test-run-7' } })
+    expect(run?.feedbackStatus).toBe('not_applicable')
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
 })

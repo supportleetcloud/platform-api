@@ -342,4 +342,86 @@ describe('GET /api/runs/:id', () => {
     const stored = await prisma.run.findUnique({ where: { id: run.id } })
     expect(stored?.status).toBe('pending')
   })
+
+  it('shows feedback text to a paid user on an older run', async () => {
+    await prisma.user.update({ where: { id: TEST_USER_ID }, data: { isPaid: true } })
+    const olderRun = await prisma.run.create({
+      data: {
+        userId: TEST_USER_ID,
+        challengeId: CHALLENGE_ID,
+        targetUrl: 'https://candidate.example.com',
+        status: 'completed',
+        score: 70,
+        feedback: 'Older feedback text',
+        feedbackStatus: 'ready',
+        callbackToken: 'unused',
+        createdAt: new Date(Date.now() - 60000),
+      },
+    })
+    await prisma.run.create({
+      data: {
+        userId: TEST_USER_ID,
+        challengeId: CHALLENGE_ID,
+        targetUrl: 'https://candidate.example.com',
+        status: 'completed',
+        score: 90,
+        feedback: 'Newer feedback text',
+        feedbackStatus: 'ready',
+        callbackToken: 'unused',
+      },
+    })
+
+    const app = createApp({ prisma, fetchImpl: jest.fn() as any })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get(`/api/runs/${olderRun.id}`)
+    expect(res.status).toBe(200)
+    expect(res.body.feedback).toBe('Older feedback text')
+    expect(res.body.feedbackLocked).toBe(false)
+
+    await prisma.user.update({ where: { id: TEST_USER_ID }, data: { isPaid: false } })
+  })
+
+  it('locks feedback for a free user on anything but their most recent completed run', async () => {
+    const olderRun = await prisma.run.create({
+      data: {
+        userId: TEST_USER_ID,
+        challengeId: CHALLENGE_ID,
+        targetUrl: 'https://candidate.example.com',
+        status: 'completed',
+        score: 70,
+        feedback: 'Older feedback text',
+        feedbackStatus: 'ready',
+        callbackToken: 'unused',
+        createdAt: new Date(Date.now() - 60000),
+      },
+    })
+    const newerRun = await prisma.run.create({
+      data: {
+        userId: TEST_USER_ID,
+        challengeId: CHALLENGE_ID,
+        targetUrl: 'https://candidate.example.com',
+        status: 'completed',
+        score: 90,
+        feedback: 'Newer feedback text',
+        feedbackStatus: 'ready',
+        callbackToken: 'unused',
+      },
+    })
+
+    const app = createApp({ prisma, fetchImpl: jest.fn() as any })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const olderRes = await agent.get(`/api/runs/${olderRun.id}`)
+    expect(olderRes.status).toBe(200)
+    expect(olderRes.body.feedbackLocked).toBe(true)
+    expect(olderRes.body.feedback).toBeNull()
+
+    const newerRes = await agent.get(`/api/runs/${newerRun.id}`)
+    expect(newerRes.status).toBe(200)
+    expect(newerRes.body.feedbackLocked).toBe(false)
+    expect(newerRes.body.feedback).toBe('Newer feedback text')
+  })
 })

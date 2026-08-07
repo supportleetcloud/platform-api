@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { timingSafeEqual } from 'crypto'
+import { generateFeedbackForRun } from './feedback'
 
 function tokensMatch(expected: string, provided: string): boolean {
   const expectedBuf = Buffer.from(expected)
@@ -11,7 +12,7 @@ function tokensMatch(expected: string, provided: string): boolean {
   return timingSafeEqual(expectedBuf, providedBuf)
 }
 
-export function createRunsWebhookRouter(prisma: PrismaClient): Router {
+export function createRunsWebhookRouter(prisma: PrismaClient, fetchImpl: typeof fetch): Router {
   const router = Router()
 
   router.post('/api/webhooks/runs/:jobId', async (req, res) => {
@@ -49,8 +50,18 @@ export function createRunsWebhookRouter(prisma: PrismaClient): Router {
         // `null` for this Json? column (Prisma treats that ambiguously; explicit omission
         // avoids the question entirely).
         ...(body.checks !== undefined ? { checks: body.checks } : {}),
+        ...(body.status === 'completed' ? { feedbackStatus: 'pending' } : {}),
       },
     })
+
+    if (body.status === 'completed') {
+      // Fire-and-forget: the webhook must respond to the validation engine immediately,
+      // not wait on an LLM call that can take seconds. generateFeedbackForRun always
+      // resolves the Run to feedbackStatus 'ready' or 'failed' internally, never throws.
+      generateFeedbackForRun(prisma, fetchImpl, run.id).catch((err) => {
+        console.error(`Feedback generation failed for run ${run.id}:`, err)
+      })
+    }
 
     res.status(200).json({ status: 'ok' })
   })
