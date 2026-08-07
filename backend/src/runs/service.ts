@@ -6,6 +6,7 @@ import { CHALLENGES_DIR } from '../challenges/service'
 
 const FREE_TIER_CHALLENGE_LIMIT = 2
 const FREE_TIER_ATTEMPT_LIMIT = 10
+const FEEDBACK_TIMEOUT_MS = 60000
 
 export type RunsServiceConfig = {
   validationEngineUrl: string
@@ -178,9 +179,13 @@ export async function getRun(
   const isStale = run.status === 'pending' && Date.now() - run.createdAt.getTime() > runTimeoutMs
   const status = isStale ? 'timed_out' : run.status
 
+  const isFeedbackStale =
+    run.feedbackStatus === 'pending' && Date.now() - run.updatedAt.getTime() > FEEDBACK_TIMEOUT_MS
+  const feedbackStatus = isFeedbackStale ? 'failed' : run.feedbackStatus
+
   const user = await prisma.user.findUniqueOrThrow({ where: { id: input.userId } })
   let feedbackLocked = false
-  if (!user.isPaid && run.status === 'completed') {
+  if (!user.isPaid && run.status === 'completed' && feedbackStatus === 'ready') {
     const isMostRecent = await isMostRecentCompletedRun(prisma, input.userId, run.id)
     feedbackLocked = !isMostRecent
   }
@@ -197,7 +202,7 @@ export async function getRun(
       error: run.error,
       createdAt: run.createdAt,
       feedback: feedbackLocked ? null : run.feedback,
-      feedbackStatus: run.feedbackStatus,
+      feedbackStatus,
       feedbackLocked,
     },
   }

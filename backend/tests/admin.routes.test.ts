@@ -113,4 +113,27 @@ describe('GET/PUT /api/admin/llm-settings', () => {
       .send({ provider: 'claude', model: 'claude-sonnet-5', apiKey: 'sk-test' })
     expect(res.status).toBe(403)
   })
+
+  it('PUT returns 500 instead of hanging or crashing the process when ENCRYPTION_KEY is malformed', async () => {
+    // Build the app (and log in) while ENCRYPTION_KEY is still valid, since app.ts now
+    // fails fast at construction time on a malformed key (see app.ts). Swapping in the
+    // invalid value only after the app exists isolates this test to the PUT handler's
+    // own try/catch (admin/routes.ts), which is what this test is actually verifying.
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const originalEncryptionKey = process.env.ENCRYPTION_KEY
+    process.env.ENCRYPTION_KEY = 'not-32-bytes'
+
+    try {
+      const res = await agent
+        .put('/api/admin/llm-settings')
+        .send({ provider: 'claude', model: 'claude-sonnet-5', apiKey: 'sk-test-key' })
+      expect(res.status).toBe(500)
+      expect(res.body).toEqual({ error: 'failed to save settings' })
+    } finally {
+      process.env.ENCRYPTION_KEY = originalEncryptionKey
+    }
+  })
 })

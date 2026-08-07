@@ -424,4 +424,68 @@ describe('GET /api/runs/:id', () => {
     expect(newerRes.body.feedbackLocked).toBe(false)
     expect(newerRes.body.feedback).toBe('Newer feedback text')
   })
+
+  it('does not lock an older run for a free user when there is no feedback to unlock', async () => {
+    const olderRun = await prisma.run.create({
+      data: {
+        userId: TEST_USER_ID,
+        challengeId: CHALLENGE_ID,
+        targetUrl: 'https://candidate.example.com',
+        status: 'completed',
+        score: 70,
+        feedbackStatus: 'not_applicable',
+        callbackToken: 'unused',
+        createdAt: new Date(Date.now() - 60000),
+      },
+    })
+    await prisma.run.create({
+      data: {
+        userId: TEST_USER_ID,
+        challengeId: CHALLENGE_ID,
+        targetUrl: 'https://candidate.example.com',
+        status: 'completed',
+        score: 90,
+        feedback: 'Newer feedback text',
+        feedbackStatus: 'ready',
+        callbackToken: 'unused',
+      },
+    })
+
+    const app = createApp({ prisma, fetchImpl: jest.fn() as any })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get(`/api/runs/${olderRun.id}`)
+    expect(res.status).toBe(200)
+    expect(res.body.feedbackStatus).toBe('not_applicable')
+    expect(res.body.feedbackLocked).toBe(false)
+    expect(res.body.feedback).toBeNull()
+  })
+
+  it('reports a failed feedbackStatus for a stale pending-feedback run without changing the stored value', async () => {
+    const staleDate = new Date(Date.now() - 2 * 60 * 1000)
+    const run = await prisma.run.create({
+      data: {
+        userId: TEST_USER_ID,
+        challengeId: CHALLENGE_ID,
+        targetUrl: 'https://candidate.example.com',
+        status: 'completed',
+        score: 80,
+        feedbackStatus: 'pending',
+        callbackToken: 'unused',
+        updatedAt: staleDate,
+      },
+    })
+
+    const app = createApp({ prisma, fetchImpl: jest.fn() as any })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get(`/api/runs/${run.id}`)
+    expect(res.status).toBe(200)
+    expect(res.body.feedbackStatus).toBe('failed')
+
+    const stored = await prisma.run.findUnique({ where: { id: run.id } })
+    expect(stored?.feedbackStatus).toBe('pending')
+  })
 })

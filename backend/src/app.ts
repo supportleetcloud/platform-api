@@ -14,6 +14,15 @@ import { createRunsRouter } from './runs/routes'
 import { createRunsWebhookRouter } from './runs/webhook'
 import { createAdminRouter } from './admin/routes'
 
+function isValidEncryptionKey(value: string | undefined): boolean {
+  if (!value) return false
+  try {
+    return Buffer.from(value, 'base64').length === 32
+  } catch {
+    return false
+  }
+}
+
 export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetch } = {}) {
   const prisma = deps.prisma ?? defaultPrisma
   const fetchImpl = deps.fetchImpl ?? fetch
@@ -34,6 +43,17 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
   // anyone who reads this repo could otherwise mint valid session cookies.
   if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
     throw new Error('SESSION_SECRET is required in production')
+  }
+
+  // Fail fast rather than booting into a state where any admin save of LLM provider
+  // settings crashes the whole process: encryptionKey() in llm/settings.ts throws
+  // synchronously if ENCRYPTION_KEY doesn't decode to exactly 32 raw bytes, and that
+  // throw is not caught anywhere between here and the process boundary.
+  if (process.env.ENCRYPTION_KEY !== undefined && !isValidEncryptionKey(process.env.ENCRYPTION_KEY)) {
+    throw new Error('ENCRYPTION_KEY must decode to exactly 32 bytes (base64-encoded)')
+  }
+  if (process.env.NODE_ENV === 'production' && !process.env.ENCRYPTION_KEY) {
+    throw new Error('ENCRYPTION_KEY is required in production')
   }
 
   app.use(
