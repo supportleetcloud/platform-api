@@ -57,6 +57,8 @@ model Run {
   checks        Json?
   error         String?
   callbackToken String
+  feedback      String?
+  feedbackStatus String   @default("not_applicable")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -65,4 +67,13 @@ model Run {
   challenge Challenge @relation(fields: [challengeId], references: [id])
 
   @@index([userId, challengeId])
+}
+
+model LlmSettings {
+  id              String   @id
+  provider        String
+  model           String
+  baseUrl         String?
+  apiKeyEncrypted String?
+  updatedAt       DateTime @updatedAt
 }

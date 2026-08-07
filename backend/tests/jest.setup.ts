@@ -29,3 +29,7 @@ process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
 // dedicated host makes it obvious in assertions that this is the mocked engine, not a
 // real one someone might actually be running on 8080 locally.
 process.env.VALIDATION_ENGINE_URL = process.env.VALIDATION_ENGINE_URL || 'http://validation-engine.test'
+// ENCRYPTION_KEY: llm/settings.ts's AES-256-GCM encryption requires 32 raw bytes,
+// base64-encoded. Deterministic test-only value (not a real secret) so LlmSettings
+// tests can encrypt/decrypt without requiring a real deploy-time key.
+process.env.ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || Buffer.alloc(32, 7).toString('base64')
