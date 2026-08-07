@@ -83,3 +83,17 @@ receiving results via a webhook it exposes itself — see
    `http://localhost:4000` default works when both run on the same machine; in any other
    deployment (e.g. the validation engine on a separate host or container) it needs to be the
    backend's real reachable address.
+
+## AI feedback
+
+Every completed run gets one LLM-generated feedback text, produced by whichever provider an
+admin has configured at `/admin/llm-settings` (Claude, OpenAI, OpenRouter, or Ollama) — see
+`docs/superpowers/specs/2026-08-07-ai-feedback-engine-design.md` for the full design.
+
+1. Generate a real encryption key for stored provider API keys and set it in `backend/.env`:
+   `openssl rand -base64 32`, assigned to `ENCRYPTION_KEY`.
+2. Log in with an account listed in `ADMIN_GITHUB_USERNAMES`, then visit `/admin/llm-settings`
+   to pick a provider, model, and (for Claude/OpenAI/OpenRouter) an API key — or a base URL
+   instead, for a locally-running Ollama.
+3. Until a provider is configured, completed runs still work normally — their feedback simply
+   resolves to unavailable (`feedbackStatus: "failed"`), never blocking the run itself.

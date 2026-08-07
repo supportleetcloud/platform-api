@@ -218,4 +218,98 @@ describe('RunStatusPage', () => {
       expect(replaceMock).toHaveBeenCalledWith('/')
     })
   })
+
+  it('keeps polling past completed while feedback is still generating, then shows it once ready', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() =>
+        jsonResponse(200, {
+          runId: 'run-5',
+          status: 'completed',
+          score: 100,
+          checks: [],
+          error: null,
+          feedback: null,
+          feedbackStatus: 'pending',
+          feedbackLocked: false,
+        })
+      )
+      .mockImplementationOnce(() =>
+        jsonResponse(200, {
+          runId: 'run-5',
+          status: 'completed',
+          score: 100,
+          checks: [],
+          error: null,
+          feedback: 'Great work on this one!',
+          feedbackStatus: 'ready',
+          feedbackLocked: false,
+        })
+      )
+    global.fetch = fetchMock as any
+
+    render(<RunStatusPage params={{ id: 'run-5' }} />)
+
+    await waitFor(() => expect(screen.getByText(/generating feedback/i)).toBeInTheDocument())
+    expect(screen.getByText('Score: 100')).toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+
+    await waitFor(() => expect(screen.getByText('Great work on this one!')).toBeInTheDocument())
+
+    const callsAfterReady = fetchMock.mock.calls.length
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000)
+    })
+    expect(fetchMock.mock.calls.length).toBe(callsAfterReady)
+  })
+
+  it('shows an upgrade message instead of feedback text when locked', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        await jsonResponse(200, {
+          runId: 'run-6',
+          status: 'completed',
+          score: 60,
+          checks: [],
+          error: null,
+          feedback: null,
+          feedbackStatus: 'ready',
+          feedbackLocked: true,
+        })
+      ) as any
+
+    render(<RunStatusPage params={{ id: 'run-6' }} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Upgrade to see feedback for this attempt.')).toBeInTheDocument()
+    })
+  })
+
+  it('shows nothing extra when feedback generation failed', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        await jsonResponse(200, {
+          runId: 'run-7',
+          status: 'completed',
+          score: 40,
+          checks: [],
+          error: null,
+          feedback: null,
+          feedbackStatus: 'failed',
+          feedbackLocked: false,
+        })
+      ) as any
+
+    render(<RunStatusPage params={{ id: 'run-7' }} />)
+
+    await waitFor(() => expect(screen.getByText('Score: 40')).toBeInTheDocument())
+    expect(screen.queryByText(/generating feedback/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/upgrade to see feedback/i)).not.toBeInTheDocument()
+  })
 })

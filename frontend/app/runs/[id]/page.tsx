@@ -18,10 +18,15 @@ type RunStatus = {
   checks: Check[] | null
   error: string | null
   createdAt: string
+  feedback: string | null
+  feedbackStatus: string
+  feedbackLocked: boolean
 }
 
 function isTerminal(run: RunStatus): boolean {
-  return run.status !== 'pending'
+  if (run.status === 'pending') return false
+  if (run.status === 'completed') return run.feedbackStatus !== 'pending'
+  return true
 }
 
 export default function RunStatusPage({ params }: { params: { id: string } }) {
@@ -51,6 +56,9 @@ export default function RunStatusPage({ params }: { params: { id: string } }) {
             </li>
           ))}
         </ul>
+        {run.data.feedbackStatus === 'pending' && <p>Generating feedback...</p>}
+        {run.data.feedbackLocked && <p>Upgrade to see feedback for this attempt.</p>}
+        {run.data.feedbackStatus === 'ready' && !run.data.feedbackLocked && <p>{run.data.feedback}</p>}
       </main>
     )
   }
