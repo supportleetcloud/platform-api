@@ -1,0 +1,700 @@
+/* ---------------------------------------------------------------------- */
+/* Tokens                                                                  */
+/* Dark, terminal-adjacent: the audience lives in dark editors and reads   */
+/* Swagger/Postman method colors daily. Depth = borders only, no shadow.   */
+/* ---------------------------------------------------------------------- */
+
+:root {
+  /* Surfaces — a single dark hue family, whisper-quiet elevation steps.
+     Inputs sit below canvas (inset, "type here"); cards sit above it. */
+  --bg-canvas: #0d0e10;
+  --bg-surface: #17181b;
+  --bg-surface-2: #1f2023;
+  --bg-inset: #0a0b0c;
+
+  /* Borders — low-opacity white over dark, a graded progression by
+     importance rather than one flat line weight everywhere. */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-emphasis: rgba(255, 255, 255, 0.18);
+
+  /* Text hierarchy — four levels, near-white rather than pure white. */
+  --text-primary: #e8e9ea;
+  --text-secondary: #a7abb3;
+  --text-tertiary: #767b85;
+  --text-muted: #4d525c;
+
+  /* Signal — the real color language of this product: pass / fail /
+     pending, exactly like a CI check run. */
+  --signal-pass: #3fb950;
+  --signal-pass-bg: rgba(63, 185, 80, 0.12);
+  --signal-fail: #f85149;
+  --signal-fail-bg: rgba(248, 81, 73, 0.12);
+  --signal-pending: #d29922;
+  --signal-pending-bg: rgba(210, 153, 34, 0.12);
+
+  /* Accent — one restrained interactive color, evoking a route/link. */
+  --accent: #58a6ff;
+  --accent-bg: rgba(88, 166, 255, 0.12);
+  --accent-strong: #79b8ff;
+
+  /* HTTP method badges — the domain's own vocabulary (Swagger/Insomnia),
+     reused as this product's signature, not decoration. */
+  --method-get: #58a6ff;
+  --method-get-bg: rgba(88, 166, 255, 0.14);
+  --method-post: #3fb950;
+  --method-post-bg: rgba(63, 185, 80, 0.14);
+  --method-put: #d29922;
+  --method-put-bg: rgba(210, 153, 34, 0.14);
+  --method-patch: #bc8cff;
+  --method-patch-bg: rgba(188, 140, 255, 0.14);
+  --method-delete: #f85149;
+  --method-delete-bg: rgba(248, 81, 73, 0.14);
+
+  /* Spacing — base 4px, dense rather than airy: signal fast, not a
+     leisurely read. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Radius — sharp-leaning (technical), not zero (harsh on text-heavy
+     forms). Small for controls/badges, slightly larger for panels. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  --font-body: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-data: var(--font-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Reset + base                                                           */
+/* ---------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+figure {
+  margin: 0;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+code,
+pre {
+  font-family: var(--font-data);
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Layout shell                                                           */
+/* ---------------------------------------------------------------------- */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-canvas);
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-data);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.topbar-prompt {
+  color: var(--accent);
+}
+
+.topbar-location {
+  color: var(--text-tertiary);
+}
+
+.topbar-location::before {
+  content: '/';
+  margin: 0 var(--space-2);
+  color: var(--border-emphasis);
+}
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.topbar-admin-tag {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--signal-pending);
+  background: var(--signal-pending-bg);
+  border: 1px solid rgba(210, 153, 34, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+}
+
+.content {
+  flex: 1;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.content-narrow {
+  max-width: 480px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Typography helpers                                                     */
+/* ---------------------------------------------------------------------- */
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.section-label {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.data {
+  font-family: var(--font-data);
+}
+
+.muted {
+  color: var(--text-tertiary);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Panels                                                                 */
+/* ---------------------------------------------------------------------- */
+
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Buttons                                                                */
+/* ---------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 36px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.btn:hover {
+  background: var(--bg-surface);
+  border-color: var(--border-emphasis);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent-bg);
+  border-color: rgba(88, 166, 255, 0.4);
+  color: var(--accent-strong);
+}
+
+.btn-primary:hover {
+  background: rgba(88, 166, 255, 0.2);
+  border-color: var(--accent);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Forms                                                                  */
+/* ---------------------------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.field input,
+.field select {
+  height: 36px;
+  padding: 0 var(--space-3);
+  background: var(--bg-inset);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-data);
+  font-size: 13px;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.field-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.field-checkbox input {
+  accent-color: var(--accent);
+}
+
+.form-error {
+  font-size: 13px;
+  color: var(--signal-fail);
+  background: var(--signal-fail-bg);
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+.form-success {
+  font-size: 13px;
+  color: var(--signal-pass);
+  background: var(--signal-pass-bg);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Pills — pass / fail / pending / locked                                 */
+/* ---------------------------------------------------------------------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.pill-pass {
+  color: var(--signal-pass);
+  background: var(--signal-pass-bg);
+  border-color: rgba(63, 185, 80, 0.3);
+}
+
+.pill-fail {
+  color: var(--signal-fail);
+  background: var(--signal-fail-bg);
+  border-color: rgba(248, 81, 73, 0.3);
+}
+
+.pill-pending {
+  color: var(--signal-pending);
+  background: var(--signal-pending-bg);
+  border-color: rgba(210, 153, 34, 0.3);
+}
+
+.pill-neutral {
+  color: var(--text-tertiary);
+  background: var(--bg-surface-2);
+  border-color: var(--border-default);
+}
+
+/* ---------------------------------------------------------------------- */
+/* HTTP method badges                                                     */
+/* ---------------------------------------------------------------------- */
+
+.badge-method {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+}
+
+.badge-method-get {
+  color: var(--method-get);
+  background: var(--method-get-bg);
+  border-color: rgba(88, 166, 255, 0.3);
+}
+
+.badge-method-post {
+  color: var(--method-post);
+  background: var(--method-post-bg);
+  border-color: rgba(63, 185, 80, 0.3);
+}
+
+.badge-method-put {
+  color: var(--method-put);
+  background: var(--method-put-bg);
+  border-color: rgba(210, 153, 34, 0.3);
+}
+
+.badge-method-patch {
+  color: var(--method-patch);
+  background: var(--method-patch-bg);
+  border-color: rgba(188, 140, 255, 0.3);
+}
+
+.badge-method-delete {
+  color: var(--method-delete);
+  background: var(--method-delete-bg);
+  border-color: rgba(248, 81, 73, 0.3);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Category badges (challenge list)                                       */
+/* ---------------------------------------------------------------------- */
+
+.badge-category {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Challenge list                                                         */
+/* ---------------------------------------------------------------------- */
+
+.challenge-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.challenge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color 120ms ease;
+}
+
+.challenge-list a.challenge-row:hover {
+  background: var(--bg-surface-2);
+  text-decoration: none;
+}
+
+.challenge-row:last-child {
+  border-bottom: none;
+}
+
+.challenge-row-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.challenge-row-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.challenge-row-points {
+  font-family: var(--font-data);
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Check-run rows — the signature: method + route + tick + points         */
+/* ---------------------------------------------------------------------- */
+
+.check-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.check-row:last-child {
+  border-bottom: none;
+}
+
+.check-route {
+  font-family: var(--font-data);
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.check-desc {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.check-points {
+  font-family: var(--font-data);
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Score header                                                           */
+/* ---------------------------------------------------------------------- */
+
+.score-header {
+  font-family: var(--font-data);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Status states (run pending / timed out / errored)                      */
+/* ---------------------------------------------------------------------- */
+
+.status-block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Pseudo-element, not a DOM node — keeps the status message as the block's
+   only text so it stays a single, unambiguous match for anything querying
+   by that exact text. */
+.status-block::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.status-block-pending::before {
+  background: var(--signal-pending);
+  box-shadow: 0 0 0 3px var(--signal-pending-bg);
+}
+
+.status-block-error::before {
+  background: var(--signal-fail);
+  box-shadow: 0 0 0 3px var(--signal-fail-bg);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Feedback block                                                         */
+/* ---------------------------------------------------------------------- */
+
+.feedback-block {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-surface);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.feedback-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Bare interstitial states (loading / not found / fetch error)           */
+/* Intentionally unwrapped — a single element, styled directly, so it      */
+/* stays the sole match for any test or reader querying its exact text.   */
+/* ---------------------------------------------------------------------- */
+
+.state-message {
+  display: block;
+  max-width: 480px;
+  margin: var(--space-7) auto;
+  padding: 0 var(--space-5);
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Landing (login)                                                        */
+/* ---------------------------------------------------------------------- */
+
+.landing {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  padding: var(--space-5);
+}
+
+.landing-wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--font-data);
+  font-size: 22px;
+  color: var(--text-primary);
+}
+
+.landing-wordmark .topbar-prompt {
+  font-size: 22px;
+}
+
+.landing-tagline {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  text-align: center;
+  max-width: 340px;
+}

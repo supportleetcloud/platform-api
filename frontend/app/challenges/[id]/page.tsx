@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useResource, backendFetch } from '../../lib/api'
+import TopBar from '../../components/TopBar'
 
 type ChallengeDetail = {
   id: string
@@ -49,41 +50,49 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
       })
   }
 
-  if (challenge.loading) return <p>Loading...</p>
-  if (challenge.notFound) return <p>Challenge not found.</p>
-  if (challenge.error) return <p>Could not load this challenge.</p>
+  if (challenge.loading) return <p className="state-message">Loading...</p>
+  if (challenge.notFound) return <p className="state-message">Challenge not found.</p>
+  if (challenge.error) return <p className="state-message">Could not load this challenge.</p>
   if (!challenge.data) return null
 
   return (
-    <main>
-      <h1>{challenge.data.title}</h1>
-      <p>
-        {challenge.data.category} &middot; {challenge.data.points} pts
-      </p>
+    <div className="page">
+      <TopBar location={params.id} />
+      <div className="content content-narrow">
+        <div>
+          <h1 className="page-title">{challenge.data.title}</h1>
+          <p className="page-subtitle">
+            <span className="badge-category">{challenge.data.category}</span> {challenge.data.points} pts
+          </p>
+        </div>
 
-      <form onSubmit={handleSubmit}>
-        <label>
-          API URL
-          <input
-            value={targetUrl}
-            onChange={(event) => setTargetUrl(event.target.value)}
-            required
-          />
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={confirmedAuthorization}
-            onChange={(event) => setConfirmedAuthorization(event.target.checked)}
-          />
-          I own or am authorized to test this URL
-        </label>
-        <button type="submit" disabled={submitting}>
-          Submit
-        </button>
-      </form>
-
-      {submitError && <p>{submitError}</p>}
-    </main>
+        <form className="panel" onSubmit={handleSubmit}>
+          <div className="field">
+            <label className="field-label" htmlFor="targetUrl">
+              API URL
+            </label>
+            <input
+              id="targetUrl"
+              value={targetUrl}
+              onChange={(event) => setTargetUrl(event.target.value)}
+              placeholder="https://your-api.onrender.com"
+              required
+            />
+          </div>
+          <label className="field-checkbox">
+            <input
+              type="checkbox"
+              checked={confirmedAuthorization}
+              onChange={(event) => setConfirmedAuthorization(event.target.checked)}
+            />
+            I own or am authorized to test this URL
+          </label>
+          <button className="btn btn-primary" type="submit" disabled={submitting}>
+            {submitting ? 'Submitting…' : 'Submit'}
+          </button>
+          {submitError && <p className="form-error">{submitError}</p>}
+        </form>
+      </div>
+    </div>
   )
 }
