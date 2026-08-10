@@ -4,27 +4,34 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ChallengeDetailPage from '../app/challenges/[id]/page'
 
 const pushMock = vi.fn()
+const replaceMock = vi.fn()
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: pushMock, replace: vi.fn() }),
+  useRouter: () => ({ push: pushMock, replace: replaceMock }),
 }))
 
 const CHALLENGE = { id: 'todo-api-crud', title: 'Build a Todo CRUD API', category: 'crud', points: 25 }
+const ME = { id: '1', username: 'octocat', avatarUrl: null, isAdmin: false, tosAcceptanceRequired: false }
 
-function mockFetch(routes: { get?: { status: number; json?: unknown }; post?: { status: number; json?: unknown } }) {
-  global.fetch = vi.fn((_url: string, init?: RequestInit) => {
+function mockFetch(routes: {
+  me?: { status: number; json?: unknown }
+  get?: { status: number; json?: unknown }
+  post?: { status: number; json?: unknown }
+}) {
+  global.fetch = vi.fn((url: string, init?: RequestInit) => {
+    if (url.includes('/api/me')) {
+      return Promise.resolve({ status: routes.me?.status ?? 200, json: async () => routes.me?.json ?? ME })
+    }
     const route = init?.method === 'POST' ? routes.post : routes.get
     const status = route?.status ?? 500
-    return Promise.resolve({
-      status,
-      json: async () => route?.json,
-    })
+    return Promise.resolve({ status, json: async () => route?.json })
   }) as any
 }
 
 describe('ChallengeDetailPage', () => {
   beforeEach(() => {
     pushMock.mockReset()
+    replaceMock.mockReset()
   })
 
   it('renders the challenge title and points', async () => {
@@ -121,6 +128,19 @@ describe('ChallengeDetailPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Something went wrong submitting your run.')).toBeInTheDocument()
+    })
+  })
+
+  it('redirects to /accept-terms when ToS acceptance is required', async () => {
+    mockFetch({
+      me: { status: 200, json: { ...ME, tosAcceptanceRequired: true } },
+      get: { status: 200, json: CHALLENGE },
+    })
+
+    render(<ChallengeDetailPage params={{ id: 'todo-api-crud' }} />)
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith('/accept-terms')
     })
   })
 })

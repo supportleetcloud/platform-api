@@ -1,6 +1,6 @@
 'use client'
 
-import { useResource } from '../lib/api'
+import { useResource, useTosGate } from '../lib/api'
 import TopBar from '../components/TopBar'
 
 type Me = {
@@ -8,6 +8,7 @@ type Me = {
   username: string
   avatarUrl: string | null
   isAdmin: boolean
+  tosAcceptanceRequired: boolean
 }
 
 type Challenge = {
@@ -20,6 +21,7 @@ type Challenge = {
 export default function DashboardPage() {
   const me = useResource<Me>('/api/me', { redirectOn401: true })
   const challenges = useResource<Challenge[]>('/api/challenges')
+  useTosGate(me)
 
   if (me.loading) return <p className="state-message">Loading...</p>
   if (me.error) return <p className="state-message">Something went wrong loading your dashboard.</p>

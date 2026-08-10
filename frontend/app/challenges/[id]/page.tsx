@@ -2,8 +2,16 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useResource, backendFetch } from '../../lib/api'
+import { useResource, backendFetch, useTosGate } from '../../lib/api'
 import TopBar from '../../components/TopBar'
+
+type Me = {
+  id: string
+  username: string
+  avatarUrl: string | null
+  isAdmin: boolean
+  tosAcceptanceRequired: boolean
+}
 
 type ChallengeDetail = {
   id: string
@@ -14,7 +22,9 @@ type ChallengeDetail = {
 
 export default function ChallengeDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter()
+  const me = useResource<Me>('/api/me', { redirectOn401: true })
   const challenge = useResource<ChallengeDetail>(`/api/challenges/${params.id}`)
+  useTosGate(me)
   const [targetUrl, setTargetUrl] = useState('')
   const [confirmedAuthorization, setConfirmedAuthorization] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -50,10 +60,10 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
       })
   }
 
-  if (challenge.loading) return <p className="state-message">Loading...</p>
+  if (me.loading || challenge.loading) return <p className="state-message">Loading...</p>
   if (challenge.notFound) return <p className="state-message">Challenge not found.</p>
-  if (challenge.error) return <p className="state-message">Could not load this challenge.</p>
-  if (!challenge.data) return null
+  if (me.error || challenge.error) return <p className="state-message">Could not load this challenge.</p>
+  if (!me.data || !challenge.data) return null
 
   return (
     <div className="page">

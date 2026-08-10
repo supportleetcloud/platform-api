@@ -8,7 +8,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: replaceMock }),
 }))
 
-const ME_RESPONSE = { id: '1', username: 'octocat', avatarUrl: null, isAdmin: false }
+const ME_RESPONSE = { id: '1', username: 'octocat', avatarUrl: null, isAdmin: false, tosAcceptanceRequired: false }
 const CHALLENGES_RESPONSE = [
   { id: 'todo-api-crud', title: 'Build a Todo CRUD API', category: 'crud', points: 25 },
 ]
@@ -97,6 +97,19 @@ describe('DashboardPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/could not load challenges/i)).toBeInTheDocument()
+    })
+  })
+
+  it('redirects to /accept-terms when ToS acceptance is required', async () => {
+    mockFetch({
+      '/api/me': { status: 200, json: { ...ME_RESPONSE, tosAcceptanceRequired: true } },
+      '/api/challenges': { status: 200, json: [] },
+    })
+
+    render(<DashboardPage />)
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith('/accept-terms')
     })
   })
 })
