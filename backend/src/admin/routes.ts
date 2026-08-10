@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client'
 import { requireAuth } from '../auth/middleware'
 import { requireAdmin } from './middleware'
 import { getLlmSettings, saveLlmSettings } from '../llm/settings'
+import { listVersions, publishVersion } from '../tos/service'
 
 export function createAdminRouter(prisma: PrismaClient): Router {
   const router = Router()
@@ -33,6 +34,24 @@ export function createAdminRouter(prisma: PrismaClient): Router {
       console.error('Failed to save LLM settings:', err)
       res.status(500).json({ error: 'failed to save settings' })
     }
+  })
+
+  router.get('/api/admin/tos/versions', requireAuth, requireAdmin, async (_req, res) => {
+    const versions = await listVersions(prisma)
+    res.json(versions.map((v) => ({ id: v.id, content: v.content, publishedAt: v.publishedAt })))
+  })
+
+  router.post('/api/admin/tos/versions', requireAuth, requireAdmin, async (req, res) => {
+    const result = await publishVersion(prisma, req.body?.content)
+    if (result.kind === 'validation_error') {
+      res.status(400).json({ error: result.error })
+      return
+    }
+    res.status(201).json({
+      id: result.version.id,
+      content: result.version.content,
+      publishedAt: result.version.publishedAt,
+    })
   })
 
   return router

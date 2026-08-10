@@ -137,3 +137,98 @@ describe('GET/PUT /api/admin/llm-settings', () => {
     }
   })
 })
+
+describe('GET/POST /api/admin/tos/versions', () => {
+  const TOS_ADMIN_USER_ID = 'admin-routes-tos-test-admin'
+  const TOS_NON_ADMIN_USER_ID = 'admin-routes-tos-test-non-admin'
+
+  beforeAll(async () => {
+    await prisma.user.upsert({
+      where: { id: TOS_ADMIN_USER_ID },
+      update: { isAdmin: true },
+      create: { id: TOS_ADMIN_USER_ID, githubId: 'gh-admin-routes-tos-test-admin', username: 'admin-octocat', isAdmin: true },
+    })
+    await prisma.user.upsert({
+      where: { id: TOS_NON_ADMIN_USER_ID },
+      update: { isAdmin: false },
+      create: { id: TOS_NON_ADMIN_USER_ID, githubId: 'gh-admin-routes-tos-test-plain', username: 'plain-octocat', isAdmin: false },
+    })
+  })
+
+  afterEach(async () => {
+    await prisma.tosAcceptance.deleteMany({})
+    await prisma.tosVersion.deleteMany({})
+  })
+
+  afterAll(async () => {
+    await prisma.user.delete({ where: { id: TOS_ADMIN_USER_ID } }).catch(() => {})
+    await prisma.user.delete({ where: { id: TOS_NON_ADMIN_USER_ID } }).catch(() => {})
+    await prisma.$disconnect()
+  })
+
+  beforeEach(() => {
+    mockAuthUser = { id: TOS_ADMIN_USER_ID, isAdmin: true }
+  })
+
+  it('GET returns 401 when not authenticated', async () => {
+    const app = createApp({ prisma })
+    const res = await request(app).get('/api/admin/tos/versions')
+    expect(res.status).toBe(401)
+  })
+
+  it('GET returns 403 for an authenticated non-admin', async () => {
+    mockAuthUser = { id: TOS_NON_ADMIN_USER_ID, isAdmin: false }
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get('/api/admin/tos/versions')
+    expect(res.status).toBe(403)
+  })
+
+  it('GET returns an empty list before any publish', async () => {
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get('/api/admin/tos/versions')
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual([])
+  })
+
+  it('POST publishes a new version and GET lists it newest-first', async () => {
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const first = await agent.post('/api/admin/tos/versions').send({ content: 'v1' })
+    expect(first.status).toBe(201)
+    expect(first.body.content).toBe('v1')
+
+    const second = await agent.post('/api/admin/tos/versions').send({ content: 'v2' })
+    expect(second.status).toBe(201)
+
+    const list = await agent.get('/api/admin/tos/versions')
+    expect(list.status).toBe(200)
+    expect(list.body.map((v: { content: string }) => v.content)).toEqual(['v2', 'v1'])
+  })
+
+  it('POST returns 400 for blank content', async () => {
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.post('/api/admin/tos/versions').send({ content: '  ' })
+    expect(res.status).toBe(400)
+  })
+
+  it('POST returns 403 for an authenticated non-admin', async () => {
+    mockAuthUser = { id: TOS_NON_ADMIN_USER_ID, isAdmin: false }
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.post('/api/admin/tos/versions').send({ content: 'v1' })
+    expect(res.status).toBe(403)
+  })
+})
