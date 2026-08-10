@@ -2,6 +2,8 @@ import request from 'supertest'
 import { PrismaClient } from '@prisma/client'
 import { createApp } from '../src/app'
 
+let mockAuthUserId = 'runs-routes-test-user'
+
 jest.mock('passport', () => {
   const actual = jest.requireActual('passport')
   const originalAuthenticate = actual.authenticate.bind(actual)
@@ -11,7 +13,7 @@ jest.mock('passport', () => {
         return originalAuthenticate(strategy, ...args)
       }
       return (req: any, _res: any, next: any) => {
-        req.user = { id: TEST_USER_ID, username: 'octocat', avatarUrl: null, isAdmin: false }
+        req.user = { id: mockAuthUserId, username: 'octocat', avatarUrl: null, isAdmin: false }
         req.login(req.user, (err: Error) => next(err))
       }
     },
@@ -43,6 +45,7 @@ describe('POST /api/runs', () => {
   })
 
   beforeEach(async () => {
+    mockAuthUserId = TEST_USER_ID
     await prisma.run.deleteMany({ where: { userId: TEST_USER_ID } })
   })
 
@@ -487,5 +490,69 @@ describe('GET /api/runs/:id', () => {
 
     const stored = await prisma.run.findUnique({ where: { id: run.id } })
     expect(stored?.feedbackStatus).toBe('pending')
+  })
+})
+
+describe('POST /api/runs — ToS gate', () => {
+  const TOS_GATE_USER_ID = 'runs-routes-tos-gate-test-user'
+
+  beforeAll(async () => {
+    await prisma.user.upsert({
+      where: { id: TOS_GATE_USER_ID },
+      update: { isPaid: false },
+      create: { id: TOS_GATE_USER_ID, githubId: 'gh-runs-routes-tos-gate-test', username: 'octocat', isPaid: false },
+    })
+  })
+
+  afterEach(async () => {
+    await prisma.run.deleteMany({ where: { userId: TOS_GATE_USER_ID } })
+    await prisma.tosAcceptance.deleteMany({})
+    await prisma.tosVersion.deleteMany({})
+  })
+
+  afterAll(async () => {
+    await prisma.user.delete({ where: { id: TOS_GATE_USER_ID } }).catch(() => {})
+    await prisma.$disconnect()
+  })
+
+  it('returns 403 tos_required when a version is published and the user has not accepted it', async () => {
+    await prisma.tosVersion.create({ data: { content: 'v1' } })
+    const fetchImpl = jest.fn() as any
+    const app = createApp({ prisma, fetchImpl })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    // The mocked `passport` strategy above always logs in as TEST_USER_ID from the
+    // outer describe blocks in this file — override it here to exercise a user with
+    // no acceptance on file, then restore for any tests that run after this one.
+    mockAuthUserId = TOS_GATE_USER_ID
+    const res = await agent.post('/api/runs').send({
+      challengeId: CHALLENGE_ID,
+      targetUrl: 'https://candidate.example.com',
+      confirmedAuthorization: true,
+    })
+
+    expect(res.status).toBe(403)
+    expect(res.body).toEqual({ error: 'tos_required' })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('allows submission once the user has accepted the current version', async () => {
+    const version = await prisma.tosVersion.create({ data: { content: 'v1' } })
+    mockAuthUserId = TOS_GATE_USER_ID
+    await prisma.tosAcceptance.create({ data: { userId: TOS_GATE_USER_ID, tosVersionId: version.id } })
+
+    const fetchImpl = jest.fn().mockResolvedValue({ ok: true, status: 202 }) as any
+    const app = createApp({ prisma, fetchImpl })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.post('/api/runs').send({
+      challengeId: CHALLENGE_ID,
+      targetUrl: 'https://candidate.example.com',
+      confirmedAuthorization: true,
+    })
+
+    expect(res.status).toBe(202)
   })
 })

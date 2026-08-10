@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { requireAuth } from '../auth/middleware'
+import { requireTosAccepted } from '../tos/middleware'
 import { submitRun, getRun, RunsServiceConfig } from './service'
 
 export type RunsRouterConfig = RunsServiceConfig
@@ -12,7 +13,7 @@ export function createRunsRouter(
 ): Router {
   const router = Router()
 
-  router.post('/api/runs', requireAuth, async (req, res) => {
+  router.post('/api/runs', requireAuth, requireTosAccepted(prisma), async (req, res) => {
     const user = req.user as { id: string }
     const body = req.body ?? {}
 
