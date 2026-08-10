@@ -31,7 +31,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  runs Run[]
+  runs           Run[]
+  tosAcceptances TosAcceptance[]
 }
 
 model Challenge {
@@ -76,4 +77,24 @@ model LlmSettings {
   baseUrl         String?
   apiKeyEncrypted String?
   updatedAt       DateTime @updatedAt
+}
+
+model TosVersion {
+  id          String   @id @default(uuid())
+  content     String   @db.Text
+  publishedAt DateTime @default(now())
+
+  acceptances TosAcceptance[]
+}
+
+model TosAcceptance {
+  id           String   @id @default(uuid())
+  userId       String
+  tosVersionId String
+  acceptedAt   DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id])
+  tosVersion TosVersion @relation(fields: [tosVersionId], references: [id])
+
+  @@unique([userId, tosVersionId])
 }
