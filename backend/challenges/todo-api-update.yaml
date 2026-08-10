@@ -1,0 +1,43 @@
+id: todo-api-update
+title: "Update and complete a todo"
+category: crud
+checks:
+  - name: "POST /todos creates a todo"
+    request:
+      method: POST
+      path: /todos
+      headers:
+        Content-Type: application/json
+      body:
+        title: "Walk the dog"
+    expect:
+      status: 201
+      json:
+        title: "Walk the dog"
+        completed: false
+    points: 10
+
+  - name: "PATCH /todos/{id} marks it completed"
+    request:
+      method: PATCH
+      path: "/todos/{{steps[0].response.json.id}}"
+      headers:
+        Content-Type: application/json
+      body:
+        completed: true
+    expect:
+      status: 200
+      json:
+        completed: true
+    points: 10
+
+  - name: "GET /todos/{id} reflects the update"
+    request:
+      method: GET
+      path: "/todos/{{steps[0].response.json.id}}"
+    expect:
+      status: 200
+      json:
+        title: "Walk the dog"
+        completed: true
+    points: 10

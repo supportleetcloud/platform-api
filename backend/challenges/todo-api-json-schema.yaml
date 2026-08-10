@@ -1,0 +1,24 @@
+id: todo-api-json-schema
+title: "Todo shape matches a JSON Schema"
+category: contract
+checks:
+  - name: "POST /todos creates a todo"
+    request:
+      method: POST
+      path: /todos
+      headers:
+        Content-Type: application/json
+      body:
+        title: "Buy milk"
+    expect:
+      status: 201
+    points: 5
+
+  - name: "GET /todos/{id} response matches the todo JSON Schema"
+    request:
+      method: GET
+      path: "/todos/{{steps[0].response.json.id}}"
+    expect:
+      status: 200
+      jsonSchema: todo-schema.json
+    points: 15

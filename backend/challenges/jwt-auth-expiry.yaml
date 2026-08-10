@@ -1,0 +1,35 @@
+id: jwt-auth-expiry
+title: "Expired and role-scoped JWT handling"
+category: auth
+checks:
+  - name: "POST /login returns a token with claims"
+    request:
+      method: POST
+      path: /login
+      body: { username: "test-user", password: "test-pass" }
+    expect:
+      status: 200
+      json: { token: exists }
+    points: 5
+
+  - name: "GET /profile with a valid token includes a subject claim"
+    request:
+      method: GET
+      path: /profile
+      headers:
+        Authorization: "Bearer {{steps[0].response.json.token}}"
+    expect:
+      status: 200
+      jwtClaims:
+        sub: exists
+    points: 10
+
+  - name: "GET /profile with an expired token is rejected"
+    request:
+      method: GET
+      path: /profile
+      headers:
+        Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJleHAiOjEwMDAwMDAwMDB9.invalidsignature"
+    expect:
+      status: 401
+    points: 10

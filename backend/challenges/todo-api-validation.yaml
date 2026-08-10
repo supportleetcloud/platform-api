@@ -1,0 +1,36 @@
+id: todo-api-validation
+title: "Input validation and content negotiation"
+category: status
+checks:
+  - name: "POST /todos with no title is rejected"
+    request:
+      method: POST
+      path: /todos
+      headers:
+        Content-Type: application/json
+      body: {}
+    expect:
+      status: 400
+    points: 10
+
+  - name: "POST /todos with a title succeeds with JSON content type"
+    request:
+      method: POST
+      path: /todos
+      headers:
+        Content-Type: application/json
+      body:
+        title: "Buy milk"
+    expect:
+      status: 201
+      headers:
+        Content-Type: "regex:application/json.*"
+    points: 10
+
+  - name: "GET /todos/{id} for an unknown id returns 404"
+    request:
+      method: GET
+      path: /todos/does-not-exist
+    expect:
+      status: 404
+    points: 5
