@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import AcceptTermsPage from '../app/accept-terms/page'
 
 const replaceMock = vi.fn()
@@ -29,6 +29,15 @@ function mockFetch(routes: {
 describe('AcceptTermsPage', () => {
   beforeEach(() => {
     replaceMock.mockReset()
+    // Stub window.location with a mock reload method for this test suite
+    vi.stubGlobal('location', {
+      ...window.location,
+      reload: vi.fn(),
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('redirects to /dashboard when acceptance is not required', async () => {
