@@ -97,3 +97,17 @@ admin has configured at `/admin/llm-settings` (Claude, OpenAI, OpenRouter, or Ol
    instead, for a locally-running Ollama.
 3. Until a provider is configured, completed runs still work normally — their feedback simply
    resolves to unavailable (`feedbackStatus: "failed"`), never blocking the run itself.
+
+## Terms of Use
+
+Every user must accept the current Terms of Use — checkbox + version + timestamp — before
+submitting a challenge run; see `docs/superpowers/specs/2026-08-10-tos-design.md` for the
+full design.
+
+1. Log in with an account listed in `ADMIN_GITHUB_USERNAMES`, then visit `/admin/tos` to
+   publish the first version. Until a version is published, no one is gated.
+2. Publishing a new version requires every user (including ones who already accepted an
+   older version) to accept again the next time `/api/me` is checked, before
+   `POST /api/runs` will succeed for them.
+3. Editing the text is never destructive — every publish creates a new, permanent version;
+   old versions and who accepted them are kept for audit purposes.

@@ -15,7 +15,13 @@ export default function TopBar({ location, username, isAdmin }: TopBarProps) {
       </div>
       {username && (
         <div className="topbar-user">
-          {isAdmin && <span className="topbar-admin-tag">admin</span>}
+          {isAdmin && (
+            <>
+              <span className="topbar-admin-tag">admin</span>
+              <a href="/admin/llm-settings">LLM</a>
+              <a href="/admin/tos">ToS</a>
+            </>
+          )}
           <span>{username}</span>
           <a href={`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/logout`}>Logout</a>
         </div>
