@@ -71,6 +71,7 @@ describe('GET /api/me', () => {
       avatarUrl: null,
       isAdmin: true,
       tosAcceptanceRequired: false,
+      hideFromRanking: false,
     })
   })
 
@@ -91,5 +92,36 @@ describe('GET /api/me', () => {
       await prisma.tosAcceptance.deleteMany({})
       await prisma.tosVersion.deleteMany({})
     }
+  })
+
+  it('PUT requires authentication', async () => {
+    const app = createApp({ prisma })
+    const res = await request(app).put('/api/me').send({ hideFromRanking: true })
+    expect(res.status).toBe(401)
+  })
+
+  it('PUT updates hideFromRanking and GET reflects it afterward', async () => {
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const put = await agent.put('/api/me').send({ hideFromRanking: true })
+    expect(put.status).toBe(200)
+    expect(put.body.hideFromRanking).toBe(true)
+
+    const after = await agent.get('/api/me')
+    expect(after.body.hideFromRanking).toBe(true)
+
+    // restore default so this test doesn't leak state into other tests in this file
+    await agent.put('/api/me').send({ hideFromRanking: false })
+  })
+
+  it('PUT returns 400 when hideFromRanking is not a boolean', async () => {
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.put('/api/me').send({ hideFromRanking: 'yes' })
+    expect(res.status).toBe(400)
   })
 })
