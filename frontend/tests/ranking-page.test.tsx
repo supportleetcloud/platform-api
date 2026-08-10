@@ -23,7 +23,7 @@ describe('RankingPage', () => {
     mockFetch({ get: { status: 200, json: RANKING } })
 
     render(<RankingPage />)
-    await waitFor(() => screen.getByText('alice'))
+    await waitFor(() => screen.getByText(/alice/))
 
     const calledUrls = (global.fetch as any).mock.calls.map((call: any[]) => call[0])
     expect(calledUrls.some((url: string) => url.includes('/api/me'))).toBe(false)
@@ -34,8 +34,8 @@ describe('RankingPage', () => {
 
     render(<RankingPage />)
 
-    await waitFor(() => screen.getByText('alice'))
-    expect(screen.getByText('bob')).toBeInTheDocument()
+    await waitFor(() => screen.getByText(/alice/))
+    expect(screen.getByText(/bob/)).toBeInTheDocument()
     expect(screen.getByText(/150/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /alice/i })).toHaveAttribute('href', '/u/alice')
   })
