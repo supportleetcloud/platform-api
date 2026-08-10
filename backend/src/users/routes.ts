@@ -1,20 +1,27 @@
 import { Router } from 'express'
+import { PrismaClient } from '@prisma/client'
 import { requireAuth } from '../auth/middleware'
+import { isTosAcceptanceRequired } from '../tos/service'
 
-export const meRouter = Router()
+export function createMeRouter(prisma: PrismaClient): Router {
+  const router = Router()
 
-meRouter.get('/api/me', requireAuth, (req, res) => {
-  const user = req.user as {
-    id: string
-    username: string
-    avatarUrl: string | null
-    isAdmin: boolean
-  }
+  router.get('/api/me', requireAuth, async (req, res) => {
+    const user = req.user as {
+      id: string
+      username: string
+      avatarUrl: string | null
+      isAdmin: boolean
+    }
 
-  res.json({
-    id: user.id,
-    username: user.username,
-    avatarUrl: user.avatarUrl,
-    isAdmin: user.isAdmin,
+    res.json({
+      id: user.id,
+      username: user.username,
+      avatarUrl: user.avatarUrl,
+      isAdmin: user.isAdmin,
+      tosAcceptanceRequired: await isTosAcceptanceRequired(prisma, user.id),
+    })
   })
-})
+
+  return router
+}

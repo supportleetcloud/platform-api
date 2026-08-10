@@ -70,6 +70,26 @@ describe('GET /api/me', () => {
       username: 'octocat',
       avatarUrl: null,
       isAdmin: true,
+      tosAcceptanceRequired: false,
     })
+  })
+
+  it('returns tosAcceptanceRequired: true once a version is published and not yet accepted', async () => {
+    const version = await prisma.tosVersion.create({ data: { content: 'v1' } })
+    try {
+      const app = createApp({ prisma })
+      const agent = request.agent(app)
+      await agent.get('/auth/github/callback')
+
+      const res = await agent.get('/api/me')
+      expect(res.body.tosAcceptanceRequired).toBe(true)
+
+      await prisma.tosAcceptance.create({ data: { userId: 'test-user-id', tosVersionId: version.id } })
+      const after = await agent.get('/api/me')
+      expect(after.body.tosAcceptanceRequired).toBe(false)
+    } finally {
+      await prisma.tosAcceptance.deleteMany({})
+      await prisma.tosVersion.deleteMany({})
+    }
   })
 })

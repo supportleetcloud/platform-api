@@ -8,7 +8,7 @@ import { PrismaClient } from '@prisma/client'
 import { prisma as defaultPrisma } from './db/client'
 import { configurePassport } from './auth/passport'
 import { authRouter } from './auth/routes'
-import { meRouter } from './users/routes'
+import { createMeRouter } from './users/routes'
 import { createChallengesRouter } from './challenges/routes'
 import { createRunsRouter } from './runs/routes'
 import { createRunsWebhookRouter } from './runs/webhook'
@@ -80,7 +80,7 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
   const runTimeoutMs = Number(process.env.RUN_TIMEOUT_MS ?? 300000)
 
   app.use(authRouter)
-  app.use(meRouter)
+  app.use(createMeRouter(prisma))
   app.use(createChallengesRouter(prisma))
   app.use(createRunsRouter(prisma, fetchImpl, { validationEngineUrl, webhookBaseUrl, runTimeoutMs }))
   app.use(createRunsWebhookRouter(prisma, fetchImpl))
