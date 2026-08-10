@@ -519,13 +519,16 @@ describe('POST /api/runs — ToS gate', () => {
     await prisma.tosVersion.create({ data: { content: 'v1' } })
     const fetchImpl = jest.fn() as any
     const app = createApp({ prisma, fetchImpl })
+
+    // The mocked `passport` strategy above always logs in as TEST_USER_ID from the
+    // outer describe blocks in this file — override it here, before login, to exercise
+    // a user with no acceptance on file. Passport's serializeUser captures the id into
+    // the session during the /auth/github/callback call below, so mockAuthUserId must
+    // be set before that call, not after — setting it after has no effect on this agent.
+    mockAuthUserId = TOS_GATE_USER_ID
     const agent = request.agent(app)
     await agent.get('/auth/github/callback')
 
-    // The mocked `passport` strategy above always logs in as TEST_USER_ID from the
-    // outer describe blocks in this file — override it here to exercise a user with
-    // no acceptance on file, then restore for any tests that run after this one.
-    mockAuthUserId = TOS_GATE_USER_ID
     const res = await agent.post('/api/runs').send({
       challengeId: CHALLENGE_ID,
       targetUrl: 'https://candidate.example.com',
