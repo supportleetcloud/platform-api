@@ -55,7 +55,7 @@ export type UserProfile = {
 }
 
 export async function getUserProfile(prisma: PrismaClient, username: string): Promise<UserProfile | null> {
-  const user = await prisma.user.findFirst({ where: { username } })
+  const user = await prisma.user.findFirst({ where: { username }, orderBy: { updatedAt: 'desc' } })
   if (!user || user.hideFromRanking) return null
 
   const grouped = await prisma.run.groupBy({
@@ -83,14 +83,13 @@ export async function getUserProfile(prisma: PrismaClient, username: string): Pr
     })
     .sort((a, b) => b.bestScore - a.bestScore || a.challengeId.localeCompare(b.challengeId))
 
-  const totalScore = challengeList.reduce((sum, c) => sum + c.bestScore, 0)
-
-  // rank is this user's 1-based position in the same list getRanking() produces — reusing
-  // getRanking() here (rather than re-deriving the sort independently) guarantees the two
-  // never drift apart.
+  // rank and totalScore are both read from this user's entry in the same list getRanking()
+  // produces — reusing getRanking() here (rather than re-deriving the score independently)
+  // guarantees the two are always one consistent snapshot, not just coincidentally in sync.
   const ranking = await getRanking(prisma)
   const position = ranking.findIndex((entry) => entry.userId === user.id)
   const rank = position === -1 ? 0 : position + 1
+  const totalScore = position === -1 ? 0 : ranking[position].totalScore
 
   return {
     username: user.username,

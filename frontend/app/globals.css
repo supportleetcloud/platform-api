@@ -173,6 +173,15 @@ select {
   color: var(--border-emphasis);
 }
 
+.topbar-nav-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.topbar-nav-link:hover {
+  text-decoration: underline;
+}
+
 .topbar-user {
   display: flex;
   align-items: center;

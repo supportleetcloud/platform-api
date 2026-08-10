@@ -21,7 +21,7 @@ export default function UserProfilePage({ params }: { params: { username: string
 
   return (
     <div className="page">
-      <TopBar location={profile.data.username} />
+      <TopBar />
       <div className="content content-narrow">
         <div>
           <h1 className="page-title">{profile.data.username}</h1>

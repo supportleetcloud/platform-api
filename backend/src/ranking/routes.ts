@@ -6,17 +6,27 @@ export function createRankingRouter(prisma: PrismaClient): Router {
   const router = Router()
 
   router.get('/api/ranking', async (_req, res) => {
-    const ranking = await getRanking(prisma)
-    res.json(ranking)
+    try {
+      const ranking = await getRanking(prisma)
+      res.json(ranking)
+    } catch (err) {
+      console.error('Failed to load ranking:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
   })
 
   router.get('/api/users/:username/profile', async (req, res) => {
-    const profile = await getUserProfile(prisma, req.params.username)
-    if (!profile) {
-      res.status(404).json({ error: 'user_not_found' })
-      return
+    try {
+      const profile = await getUserProfile(prisma, req.params.username)
+      if (!profile) {
+        res.status(404).json({ error: 'user_not_found' })
+        return
+      }
+      res.json(profile)
+    } catch (err) {
+      console.error('Failed to load user profile:', err)
+      res.status(500).json({ error: 'internal_error' })
     }
-    res.json(profile)
   })
 
   return router

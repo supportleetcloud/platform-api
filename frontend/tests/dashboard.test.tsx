@@ -54,6 +54,20 @@ describe('DashboardPage', () => {
     })
   })
 
+  it('renders a Ranking link pointing to /ranking', async () => {
+    mockFetch({
+      '/api/me': { status: 200, json: ME_RESPONSE },
+      '/api/challenges': { status: 200, json: [] },
+    })
+
+    render(<DashboardPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/welcome, octocat/i)).toBeInTheDocument()
+    })
+    expect(screen.getByRole('link', { name: 'Ranking' })).toHaveAttribute('href', '/ranking')
+  })
+
   it('redirects to the login page when the session is missing', async () => {
     mockFetch({
       '/api/me': { status: 401 },
@@ -144,6 +158,9 @@ describe('DashboardPage', () => {
     await waitFor(() => {
       expect(checkbox.checked).toBe(true)
     })
+
+    const putCall = (global.fetch as any).mock.calls.find((call: any[]) => call[1]?.method === 'PUT')
+    expect(JSON.parse(putCall[1].body)).toEqual({ hideFromRanking: true })
   })
 
   it('reverts the checkbox and shows an error when the PUT fails', async () => {
