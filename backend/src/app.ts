@@ -13,6 +13,7 @@ import { createChallengesRouter } from './challenges/routes'
 import { createRunsRouter } from './runs/routes'
 import { createRunsWebhookRouter } from './runs/webhook'
 import { createAdminRouter } from './admin/routes'
+import { createTosRouter } from './tos/routes'
 
 function isValidEncryptionKey(value: string | undefined): boolean {
   if (!value) return false
@@ -84,6 +85,7 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
   app.use(createRunsRouter(prisma, fetchImpl, { validationEngineUrl, webhookBaseUrl, runTimeoutMs }))
   app.use(createRunsWebhookRouter(prisma, fetchImpl))
   app.use(createAdminRouter(prisma))
+  app.use(createTosRouter(prisma))
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' })
