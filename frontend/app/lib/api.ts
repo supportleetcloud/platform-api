@@ -102,3 +102,13 @@ export function useResource<T>(path: string, opts: UseResourceOptions<T> = {}): 
 
   return { data, loading, error, notFound }
 }
+
+export function useTosGate(me: UseResourceResult<{ tosAcceptanceRequired: boolean }>) {
+  const router = useRouter()
+
+  useEffect(() => {
+    if (me.data?.tosAcceptanceRequired) {
+      router.replace('/accept-terms')
+    }
+  }, [me.data, router])
+}
