@@ -1,11 +1,11 @@
 import { PrismaClient, TosVersion } from '@prisma/client'
 
 export async function getCurrentVersion(prisma: PrismaClient): Promise<TosVersion | null> {
-  return prisma.tosVersion.findFirst({ orderBy: { publishedAt: 'desc' } })
+  return prisma.tosVersion.findFirst({ orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }] })
 }
 
 export async function listVersions(prisma: PrismaClient): Promise<TosVersion[]> {
-  return prisma.tosVersion.findMany({ orderBy: { publishedAt: 'desc' } })
+  return prisma.tosVersion.findMany({ orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }] })
 }
 
 export type PublishVersionResult =
@@ -17,7 +17,7 @@ export async function publishVersion(prisma: PrismaClient, content: string): Pro
     return { kind: 'validation_error', error: 'content is required' }
   }
 
-  const version = await prisma.tosVersion.create({ data: { content } })
+  const version = await prisma.tosVersion.create({ data: { content: content.trim() } })
   return { kind: 'published', version }
 }
 

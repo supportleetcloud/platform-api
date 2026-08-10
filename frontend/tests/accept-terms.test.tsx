@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AcceptTermsPage from '../app/accept-terms/page'
 
 const replaceMock = vi.fn()
@@ -29,15 +29,6 @@ function mockFetch(routes: {
 describe('AcceptTermsPage', () => {
   beforeEach(() => {
     replaceMock.mockReset()
-    // Stub window.location with a mock reload method for this test suite
-    vi.stubGlobal('location', {
-      ...window.location,
-      reload: vi.fn(),
-    })
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
   })
 
   it('redirects to /dashboard when acceptance is not required', async () => {
@@ -97,7 +88,6 @@ describe('AcceptTermsPage', () => {
       accept: { status: 409, json: { error: 'stale_version' } },
     })
     const user = userEvent.setup()
-    vi.spyOn(window.location, 'reload').mockImplementation(() => {})
 
     render(<AcceptTermsPage />)
     await waitFor(() => screen.getByText('Be excellent to each other.'))
@@ -108,6 +98,6 @@ describe('AcceptTermsPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/terms were updated/i)).toBeInTheDocument()
     })
-    expect(replaceMock).not.toHaveBeenCalledWith('/dashboard')
+    expect(replaceMock).not.toHaveBeenCalled()
   })
 })

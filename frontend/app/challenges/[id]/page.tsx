@@ -46,6 +46,10 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
           router.push(`/runs/${body.runId}`)
           return
         }
+        if (res.status === 403 && body.error === 'tos_required') {
+          router.replace('/accept-terms')
+          return
+        }
         if (res.status === 400 || res.status === 403) {
           setSubmitError(body.error ?? 'Submission was rejected.')
           setSubmitting(false)

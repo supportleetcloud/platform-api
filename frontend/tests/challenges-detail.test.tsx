@@ -112,6 +112,25 @@ describe('ChallengeDetailPage', () => {
     })
   })
 
+  it('redirects to /accept-terms on a 403 tos_required response from the submit', async () => {
+    mockFetch({
+      get: { status: 200, json: CHALLENGE },
+      post: { status: 403, json: { error: 'tos_required' } },
+    })
+    const user = userEvent.setup()
+
+    render(<ChallengeDetailPage params={{ id: 'todo-api-crud' }} />)
+    await waitFor(() => screen.getByText('Build a Todo CRUD API'))
+
+    await user.type(screen.getByLabelText(/api url/i), 'https://candidate.example.com')
+    await user.click(screen.getByLabelText(/authorized to test/i))
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith('/accept-terms')
+    })
+  })
+
   it('shows a generic message when the submit request fails on the network', async () => {
     global.fetch = vi.fn((_url: string, init?: RequestInit) => {
       if (init?.method === 'POST') return Promise.reject(new Error('network down'))

@@ -14,12 +14,19 @@ export function createMeRouter(prisma: PrismaClient): Router {
       isAdmin: boolean
     }
 
+    let tosAcceptanceRequired = false
+    try {
+      tosAcceptanceRequired = await isTosAcceptanceRequired(prisma, user.id)
+    } catch (err) {
+      console.error(`Failed to determine tosAcceptanceRequired for user ${user.id}:`, err)
+    }
+
     res.json({
       id: user.id,
       username: user.username,
       avatarUrl: user.avatarUrl,
       isAdmin: user.isAdmin,
-      tosAcceptanceRequired: await isTosAcceptanceRequired(prisma, user.id),
+      tosAcceptanceRequired,
     })
   })
 

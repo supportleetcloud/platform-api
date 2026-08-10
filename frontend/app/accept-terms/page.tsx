@@ -22,7 +22,8 @@ type TosCurrent = {
 export default function AcceptTermsPage() {
   const router = useRouter()
   const me = useResource<Me>('/api/me', { redirectOn401: true })
-  const tos = useResource<TosCurrent>('/api/tos/current')
+  const [reloadKey, setReloadKey] = useState(0)
+  const tos = useResource<TosCurrent>(`/api/tos/current?r=${reloadKey}`)
 
   const [accepted, setAccepted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -60,7 +61,7 @@ export default function AcceptTermsPage() {
           setSubmitError('The terms were updated — please review the new version.')
           setAccepted(false)
           setSubmitting(false)
-          window.location.reload()
+          setReloadKey((k) => k + 1)
           return
         }
         setSubmitError('Something went wrong recording your acceptance.')

@@ -9,8 +9,14 @@ export function requireTosAccepted(prisma: PrismaClient) {
       res.status(401).json({ error: 'not_authenticated' })
       return
     }
-    if (await isTosAcceptanceRequired(prisma, user.id)) {
-      res.status(403).json({ error: 'tos_required' })
+    try {
+      if (await isTosAcceptanceRequired(prisma, user.id)) {
+        res.status(403).json({ error: 'tos_required' })
+        return
+      }
+    } catch (err) {
+      console.error(`Failed to determine tosAcceptanceRequired for user ${user.id}:`, err)
+      res.status(500).json({ error: 'internal_error' })
       return
     }
     next()
