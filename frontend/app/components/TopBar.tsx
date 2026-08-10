@@ -12,6 +12,9 @@ export default function TopBar({ location, username, isAdmin }: TopBarProps) {
           <span className="topbar-prompt">&gt;</span> practice
         </a>
         {location && <span className="topbar-location">{location}</span>}
+        <a href="/ranking" className="topbar-location" style={{ textDecoration: 'none' }}>
+          Ranking
+        </a>
       </div>
       {username && (
         <div className="topbar-user">

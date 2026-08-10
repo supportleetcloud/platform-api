@@ -1,6 +1,7 @@
 'use client'
 
-import { useResource, useTosGate } from '../lib/api'
+import { useEffect, useState } from 'react'
+import { useResource, useTosGate, backendFetch } from '../lib/api'
 import TopBar from '../components/TopBar'
 
 type Me = {
@@ -9,6 +10,7 @@ type Me = {
   avatarUrl: string | null
   isAdmin: boolean
   tosAcceptanceRequired: boolean
+  hideFromRanking: boolean
 }
 
 type Challenge = {
@@ -22,6 +24,41 @@ export default function DashboardPage() {
   const me = useResource<Me>('/api/me', { redirectOn401: true })
   const challenges = useResource<Challenge[]>('/api/challenges')
   useTosGate(me)
+
+  const [hideFromRanking, setHideFromRanking] = useState(false)
+  const [savingRanking, setSavingRanking] = useState(false)
+  const [rankingError, setRankingError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (me.data) setHideFromRanking(me.data.hideFromRanking)
+  }, [me.data])
+
+  function handleToggleRanking(event: React.ChangeEvent<HTMLInputElement>) {
+    const next = event.target.checked
+    setHideFromRanking(next)
+    setRankingError(null)
+    setSavingRanking(true)
+
+    backendFetch('/api/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hideFromRanking: next }),
+    })
+      .then((res) => {
+        if (res.status === 200) {
+          setSavingRanking(false)
+          return
+        }
+        setHideFromRanking(!next)
+        setRankingError('Could not save preference.')
+        setSavingRanking(false)
+      })
+      .catch(() => {
+        setHideFromRanking(!next)
+        setRankingError('Could not save preference.')
+        setSavingRanking(false)
+      })
+  }
 
   if (me.loading) return <p className="state-message">Loading...</p>
   if (me.error) return <p className="state-message">Something went wrong loading your dashboard.</p>
@@ -57,6 +94,19 @@ export default function DashboardPage() {
               ))}
             </ul>
           )}
+        </div>
+
+        <div>
+          <label className="field-checkbox">
+            <input
+              type="checkbox"
+              checked={hideFromRanking}
+              onChange={handleToggleRanking}
+              disabled={savingRanking}
+            />
+            Hide from public ranking
+          </label>
+          {rankingError && <p className="form-error">{rankingError}</p>}
         </div>
       </div>
     </div>

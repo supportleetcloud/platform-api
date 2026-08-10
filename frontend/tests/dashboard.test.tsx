@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import DashboardPage from '../app/dashboard/page'
 
@@ -8,15 +9,26 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: replaceMock }),
 }))
 
-const ME_RESPONSE = { id: '1', username: 'octocat', avatarUrl: null, isAdmin: false, tosAcceptanceRequired: false }
+const ME_RESPONSE = {
+  id: '1',
+  username: 'octocat',
+  avatarUrl: null,
+  isAdmin: false,
+  tosAcceptanceRequired: false,
+  hideFromRanking: false,
+}
 const CHALLENGES_RESPONSE = [
   { id: 'todo-api-crud', title: 'Build a Todo CRUD API', category: 'crud', points: 25 },
 ]
 
-function mockFetch(routes: Record<string, { status: number; json?: unknown }>) {
-  global.fetch = vi.fn((url: string) => {
-    const match = Object.keys(routes).find((path) => url.includes(path))
-    const route = match ? routes[match] : { status: 500 }
+function mockFetch(routes: Record<string, { status: number; json?: unknown }> & { put?: { status: number; json?: unknown } }) {
+  global.fetch = vi.fn((url: string, init?: RequestInit) => {
+    if (init?.method === 'PUT') {
+      const route = routes.put ?? { status: 500 }
+      return Promise.resolve({ status: route.status, json: async () => route.json })
+    }
+    const match = Object.keys(routes).find((path) => path !== 'put' && url.includes(path))
+    const route = match ? (routes as Record<string, { status: number; json?: unknown }>)[match] : { status: 500 }
     return Promise.resolve({
       status: route.status,
       json: async () => route.json,
@@ -111,5 +123,46 @@ describe('DashboardPage', () => {
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith('/accept-terms')
     })
+  })
+
+  it('toggles hideFromRanking via PUT /api/me and reflects the new value', async () => {
+    mockFetch({
+      '/api/me': { status: 200, json: ME_RESPONSE },
+      '/api/challenges': { status: 200, json: [] },
+      put: { status: 200, json: { ...ME_RESPONSE, hideFromRanking: true } },
+    })
+    const user = userEvent.setup()
+
+    render(<DashboardPage />)
+    await waitFor(() => screen.getByLabelText(/hide from public ranking/i))
+
+    const checkbox = screen.getByLabelText(/hide from public ranking/i) as HTMLInputElement
+    expect(checkbox.checked).toBe(false)
+
+    await user.click(checkbox)
+
+    await waitFor(() => {
+      expect(checkbox.checked).toBe(true)
+    })
+  })
+
+  it('reverts the checkbox and shows an error when the PUT fails', async () => {
+    mockFetch({
+      '/api/me': { status: 200, json: ME_RESPONSE },
+      '/api/challenges': { status: 200, json: [] },
+      put: { status: 500 },
+    })
+    const user = userEvent.setup()
+
+    render(<DashboardPage />)
+    await waitFor(() => screen.getByLabelText(/hide from public ranking/i))
+
+    const checkbox = screen.getByLabelText(/hide from public ranking/i) as HTMLInputElement
+    await user.click(checkbox)
+
+    await waitFor(() => {
+      expect(checkbox.checked).toBe(false)
+    })
+    expect(screen.getByText(/could not save/i)).toBeInTheDocument()
   })
 })
