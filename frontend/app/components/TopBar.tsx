@@ -23,6 +23,7 @@ export default function TopBar({ location, username, isAdmin }: TopBarProps) {
               <span className="topbar-admin-tag">admin</span>
               <a href="/admin/llm-settings">LLM</a>
               <a href="/admin/tos">ToS</a>
+              <a href="/admin/billing">Billing</a>
             </>
           )}
           <span>{username}</span>

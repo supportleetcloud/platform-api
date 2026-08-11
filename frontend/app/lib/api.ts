@@ -8,6 +8,12 @@ export function backendFetch(path: string, init?: RequestInit): Promise<Response
   return fetch(`${backendUrl}${path}`, { ...init, credentials: 'include' })
 }
 
+// Internal sentinel used by useResource to signal "state already handled
+// (or intentionally left untouched) upstream, do not process this as a
+// loaded value" — distinct from a real `null` JSON response body, which is
+// a legitimate value for resources that are simply not configured yet.
+const SKIP = Symbol('useResource:skip')
+
 export type UseResourceOptions<T> = {
   redirectOn401?: boolean
   pollMs?: number
@@ -50,17 +56,17 @@ export function useResource<T>(path: string, opts: UseResourceOptions<T> = {}): 
 
       backendFetch(path)
         .then((res) => {
-          if (!isCurrent()) return null
+          if (!isCurrent()) return SKIP
           if (res.status === 401 && opts.redirectOn401) {
             router.replace('/')
             stopInterval()
-            return null
+            return SKIP
           }
           if (res.status === 404) {
             setNotFound(true)
             setLoading(false)
             stopInterval()
-            return null
+            return SKIP
           }
           if (res.status !== 200) {
             throw new Error(`unexpected status ${res.status}`)
@@ -69,7 +75,12 @@ export function useResource<T>(path: string, opts: UseResourceOptions<T> = {}): 
         })
         .then((json) => {
           if (!isCurrent()) return
-          if (json === null || json === undefined) return
+          // `json` may legitimately be `null` for resources that are simply
+          // not configured yet (e.g. billing settings) — only the internal
+          // SKIP sentinel (used above for stale-generation/401/404, which
+          // already updated state or intentionally left it untouched) should
+          // bail out here without recording a load.
+          if (json === SKIP) return
           setData(json)
           setLoading(false)
           hasLoadedRef.current = true
