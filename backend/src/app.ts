@@ -13,6 +13,7 @@ import { createMeRouter } from './users/routes'
 import { createChallengesRouter } from './challenges/routes'
 import { createRunsRouter } from './runs/routes'
 import { createRunsWebhookRouter } from './runs/webhook'
+import { createBillingRouter } from './billing/routes'
 import { createAdminRouter } from './admin/routes'
 import { createTosRouter } from './tos/routes'
 import { createRankingRouter } from './ranking/routes'
@@ -98,6 +99,7 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
   app.use(createChallengesRouter(prisma))
   app.use(createRunsRouter(prisma, fetchImpl, { validationEngineUrl, webhookBaseUrl, runTimeoutMs }))
   app.use(createRunsWebhookRouter(prisma, fetchImpl))
+  app.use(createBillingRouter(prisma, stripe, { frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000' }))
   app.use(createAdminRouter(prisma))
   app.use(createTosRouter(prisma))
   app.use(createRankingRouter(prisma))
