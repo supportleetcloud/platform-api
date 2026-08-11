@@ -309,6 +309,7 @@ const SETTINGS_ID = 'singleton'
 
 const USER_FREE = 'billing-service-test-free'
 const USER_PAID = 'billing-service-test-paid'
+const USER_FREE_WITH_CUSTOMER = 'billing-service-test-free-with-customer'
 
 function fakeStripe(overrides: Partial<Stripe> = {}): Stripe {
   return {
@@ -343,6 +344,17 @@ describe('billing/service', () => {
         stripeSubscriptionId: 'sub_test_paid',
       },
     })
+    await prisma.user.upsert({
+      where: { id: USER_FREE_WITH_CUSTOMER },
+      update: { isPaid: false, stripeCustomerId: 'cus_test_free_returning', stripeSubscriptionId: null },
+      create: {
+        id: USER_FREE_WITH_CUSTOMER,
+        githubId: 'gh-billing-free-returning',
+        username: 'free-returning-billing-test',
+        isPaid: false,
+        stripeCustomerId: 'cus_test_free_returning',
+      },
+    })
   })
 
   afterEach(async () => {
@@ -352,6 +364,7 @@ describe('billing/service', () => {
   afterAll(async () => {
     await prisma.user.delete({ where: { id: USER_FREE } }).catch(() => {})
     await prisma.user.delete({ where: { id: USER_PAID } }).catch(() => {})
+    await prisma.user.delete({ where: { id: USER_FREE_WITH_CUSTOMER } }).catch(() => {})
     await prisma.$disconnect()
   })
 
@@ -399,10 +412,12 @@ describe('billing/service', () => {
       const create = jest.fn().mockResolvedValue({ url: 'https://checkout.stripe.test/session-1' })
       const stripe = fakeStripe({ checkout: { sessions: { create } } })
 
-      const result = await startCheckout(prisma, stripe, USER_PAID, 'http://localhost:3000')
+      const result = await startCheckout(prisma, stripe, USER_FREE_WITH_CUSTOMER, 'http://localhost:3000')
 
       expect(result).toEqual({ kind: 'created', url: 'https://checkout.stripe.test/session-1' })
-      expect(create).not.toHaveBeenCalled()
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ customer: 'cus_test_free_returning', client_reference_id: USER_FREE_WITH_CUSTOMER })
+      )
     })
 
     it('creates a checkout session for a free user with no stripeCustomerId yet', async () => {
