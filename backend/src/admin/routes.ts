@@ -1,11 +1,13 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
+import Stripe from 'stripe'
 import { requireAuth } from '../auth/middleware'
 import { requireAdmin } from './middleware'
 import { getLlmSettings, saveLlmSettings } from '../llm/settings'
 import { listVersions, publishVersion } from '../tos/service'
+import { getAdminBillingSettings, updatePrice } from '../billing/service'
 
-export function createAdminRouter(prisma: PrismaClient): Router {
+export function createAdminRouter(prisma: PrismaClient, stripe: Stripe): Router {
   const router = Router()
 
   router.get('/api/admin/llm-settings', requireAuth, requireAdmin, async (_req, res) => {
@@ -52,6 +54,22 @@ export function createAdminRouter(prisma: PrismaClient): Router {
       content: result.version.content,
       publishedAt: result.version.publishedAt,
     })
+  })
+
+  router.get('/api/admin/billing-settings', requireAuth, requireAdmin, async (_req, res) => {
+    const settings = await getAdminBillingSettings(prisma)
+    res.json(settings)
+  })
+
+  router.put('/api/admin/billing-settings', requireAuth, requireAdmin, async (req, res) => {
+    const amountCents = req.body?.amountCents
+    const result = await updatePrice(prisma, stripe, amountCents)
+
+    if (result.kind === 'validation_error') {
+      res.status(400).json({ error: result.error })
+      return
+    }
+    res.json({ priceCents: result.priceCents, currency: result.currency })
   })
 
   return router

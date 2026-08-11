@@ -1,5 +1,6 @@
 import request from 'supertest'
 import { PrismaClient } from '@prisma/client'
+import Stripe from 'stripe'
 import { createApp } from '../src/app'
 
 // `mockAuthUser` (not `global`) because Jest's module-factory hoisting only allows
@@ -229,6 +230,112 @@ describe('GET/POST /api/admin/tos/versions', () => {
     await agent.get('/auth/github/callback')
 
     const res = await agent.post('/api/admin/tos/versions').send({ content: 'v1' })
+    expect(res.status).toBe(403)
+  })
+})
+
+function fakeStripe(overrides: Record<string, unknown> = {}): Stripe {
+  return {
+    checkout: { sessions: { create: jest.fn() } },
+    subscriptions: { update: jest.fn(), retrieve: jest.fn() },
+    products: { create: jest.fn() },
+    prices: { create: jest.fn() },
+    ...overrides,
+  } as unknown as Stripe
+}
+
+describe('GET/PUT /api/admin/billing-settings', () => {
+  const BILLING_ADMIN_USER_ID = 'admin-routes-billing-test-admin'
+  const BILLING_NON_ADMIN_USER_ID = 'admin-routes-billing-test-non-admin'
+  const SETTINGS_ID = 'singleton'
+
+  beforeAll(async () => {
+    await prisma.user.upsert({
+      where: { id: BILLING_ADMIN_USER_ID },
+      update: { isAdmin: true },
+      create: { id: BILLING_ADMIN_USER_ID, githubId: 'gh-admin-routes-billing-admin', username: 'admin-octocat', isAdmin: true },
+    })
+    await prisma.user.upsert({
+      where: { id: BILLING_NON_ADMIN_USER_ID },
+      update: { isAdmin: false },
+      create: { id: BILLING_NON_ADMIN_USER_ID, githubId: 'gh-admin-routes-billing-plain', username: 'plain-octocat', isAdmin: false },
+    })
+  })
+
+  afterEach(async () => {
+    await prisma.billingSettings.deleteMany({ where: { id: SETTINGS_ID } })
+  })
+
+  afterAll(async () => {
+    await prisma.user.delete({ where: { id: BILLING_ADMIN_USER_ID } }).catch(() => {})
+    await prisma.user.delete({ where: { id: BILLING_NON_ADMIN_USER_ID } }).catch(() => {})
+    await prisma.$disconnect()
+  })
+
+  beforeEach(() => {
+    mockAuthUser = { id: BILLING_ADMIN_USER_ID, isAdmin: true }
+  })
+
+  it('GET returns 401 when not authenticated', async () => {
+    const app = createApp({ prisma })
+    const res = await request(app).get('/api/admin/billing-settings')
+    expect(res.status).toBe(401)
+  })
+
+  it('GET returns 403 for an authenticated non-admin', async () => {
+    mockAuthUser = { id: BILLING_NON_ADMIN_USER_ID, isAdmin: false }
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get('/api/admin/billing-settings')
+    expect(res.status).toBe(403)
+  })
+
+  it('GET returns null before any price has been set', async () => {
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get('/api/admin/billing-settings')
+    expect(res.status).toBe(200)
+    expect(res.body).toBeNull()
+  })
+
+  it('PUT sets the price and GET reflects it', async () => {
+    const createProductMock = jest.fn().mockResolvedValue({ id: 'prod_admin_test' })
+    const createPriceMock = jest.fn().mockResolvedValue({ id: 'price_admin_test' })
+    const app = createApp({
+      prisma,
+      stripeClient: fakeStripe({ products: { create: createProductMock }, prices: { create: createPriceMock } }),
+    })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const put = await agent.put('/api/admin/billing-settings').send({ amountCents: 1999 })
+    expect(put.status).toBe(200)
+    expect(put.body).toEqual({ priceCents: 1999, currency: 'usd' })
+
+    const after = await agent.get('/api/admin/billing-settings')
+    expect(after.body).toEqual({ priceCents: 1999, currency: 'usd' })
+  })
+
+  it('PUT returns 400 for a non-positive amountCents', async () => {
+    const app = createApp({ prisma, stripeClient: fakeStripe() })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.put('/api/admin/billing-settings').send({ amountCents: 0 })
+    expect(res.status).toBe(400)
+  })
+
+  it('PUT returns 403 for an authenticated non-admin', async () => {
+    mockAuthUser = { id: BILLING_NON_ADMIN_USER_ID, isAdmin: false }
+    const app = createApp({ prisma, stripeClient: fakeStripe() })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.put('/api/admin/billing-settings').send({ amountCents: 999 })
     expect(res.status).toBe(403)
   })
 })
