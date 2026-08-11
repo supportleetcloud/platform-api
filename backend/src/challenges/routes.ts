@@ -6,6 +6,7 @@ export function createChallengesRouter(prisma: PrismaClient): Router {
 
   router.get('/api/challenges', async (_req, res) => {
     const challenges = await prisma.challenge.findMany({
+      where: { archived: false },
       select: { id: true, title: true, category: true, points: true },
       orderBy: { createdAt: 'asc' },
     })
@@ -13,9 +14,17 @@ export function createChallengesRouter(prisma: PrismaClient): Router {
   })
 
   router.get('/api/challenges/:id', async (req, res) => {
-    const challenge = await prisma.challenge.findUnique({
-      where: { id: req.params.id },
-      select: { id: true, title: true, category: true, points: true },
+    const challenge = await prisma.challenge.findFirst({
+      where: { id: req.params.id, archived: false },
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        points: true,
+        description: true,
+        objective: true,
+        technicalDetails: true,
+      },
     })
 
     if (!challenge) {
