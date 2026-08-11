@@ -921,8 +921,13 @@ export function createChallengesAdminRouter(prisma: PrismaClient): Router {
   router.post('/api/admin/challenges', requireAuth, requireAdmin, async (req, res) => {
     try {
       const result = await createChallenge(prisma, parseChallengeInputBody(req.body))
-      if (result.kind === 'validation_error') {
-        res.status(400).json({ error: result.error })
+      // createChallenge shares SaveChallengeResult's full 4-variant union with updateChallenge
+      // (Task 2), even though it only ever actually returns 'saved' or 'validation_error' — narrow
+      // on `!== 'saved'` (not `=== 'validation_error'`) so this type-checks against the declared
+      // union; the 'not_found'/'file_defined' branches are unreachable in practice and just fall
+      // back to a generic 400 if createChallenge's contract ever changes.
+      if (result.kind !== 'saved') {
+        res.status(400).json({ error: result.kind === 'validation_error' ? result.error : result.kind })
         return
       }
       res.status(201).json({ challengeId: result.challengeId })
