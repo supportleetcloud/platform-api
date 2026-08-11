@@ -10,6 +10,7 @@
 
 ## Global Constraints
 
+- Task 1 makes `Challenge.yamlPath` nullable, which breaks `backend/src/runs/service.ts`'s compile (it wasn't Task 1's job to fix — that's Task 5's). Commit `8135fe2` (interstitial, dispatched by the controller between Tasks 2 and 3) added a temporary type-satisfying guard there so every task's own `npm test` gate stays green until Task 5 lands and replaces it with the real logic — see Task 5's Step 3 for the exact hand-off.
 - `category` must be one of `crud`, `contract`, `status`, `auth` — validated in the service layer, no Prisma enum (matches the existing freeform-but-conventional `Challenge.category` column).
 - File-seeded challenges (`yamlPath` not null) are **read-only** through the admin API — `updateChallenge` rejects with a distinct `file_defined` result (routed to `400`), never editable via this UI (design spec, "Backend").
 - Archived challenges are excluded from the public catalog (`GET /api/challenges`, `GET /api/challenges/:id`) and from new run submissions (`runs/service.ts`'s challenge lookup) — always treated identically to a nonexistent challenge, no distinct "exists but archived" signal ever leaks (design spec, "Backend" — matches the `hideFromRanking` precedent).
@@ -1294,8 +1295,18 @@ to:
   }
 ```
 
-Change the YAML-loading step:
+Change the YAML-loading step. **Note:** an interstitial fix (commit `8135fe2`, landed between Tasks 2 and 3 to unblock compilation after Task 1 made `yamlPath` nullable — see the plan's Global Constraints and the SDD ledger) already added a temporary `if (!challenge.yamlPath) { return { kind: 'internal_error', ... } }` guard ahead of the `try`/`catch` below. Your job is to replace that whole guard (both the temporary early-return and the original `try`/`catch`) with the real `if (challenge.yamlPath) { ... } else { ... }` branch below — the temporary guard's job was only ever to make the file compile until this task landed. If the file's current content doesn't match this description, read it as it stands and adapt — the intent is unchanged: file-seeded challenges behave exactly as before, DB-defined ones (`yamlPath` null) get their checks serialized via `buildChallengeYaml`.
+
+Current content (temporary guard + original try/catch):
 ```ts
+  if (!challenge.yamlPath) {
+    // Database-defined challenges (Task 5 of docs/superpowers/plans/2026-08-11-challenge-authoring.md)
+    // aren't wired up yet — this branch exists only so the compiler accepts `yamlPath`'s now-nullable
+    // type (added by that plan's Task 1) without changing behavior for any of today's real,
+    // file-seeded challenges, all of which still have a non-null yamlPath.
+    return { kind: 'internal_error', error: 'failed to load challenge definition' }
+  }
+
   let challengeYaml: string
   try {
     challengeYaml = fs.readFileSync(path.join(CHALLENGES_DIR, challenge.yamlPath), 'utf-8')
@@ -1304,7 +1315,7 @@ Change the YAML-loading step:
     return { kind: 'internal_error', error: 'failed to load challenge definition' }
   }
 ```
-to:
+Replace the whole block above with:
 ```ts
   let challengeYaml: string
   if (challenge.yamlPath) {
