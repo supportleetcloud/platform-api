@@ -14,6 +14,7 @@ import { createChallengesRouter } from './challenges/routes'
 import { createRunsRouter } from './runs/routes'
 import { createRunsWebhookRouter } from './runs/webhook'
 import { createBillingRouter } from './billing/routes'
+import { createBillingWebhookRouter } from './billing/webhook'
 import { createAdminRouter } from './admin/routes'
 import { createTosRouter } from './tos/routes'
 import { createRankingRouter } from './ranking/routes'
@@ -38,6 +39,7 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
       credentials: true,
     })
   )
+  app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }))
   app.use(express.json())
 
   const PgSession = connectPgSimple(session)
@@ -100,6 +102,7 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
   app.use(createRunsRouter(prisma, fetchImpl, { validationEngineUrl, webhookBaseUrl, runTimeoutMs }))
   app.use(createRunsWebhookRouter(prisma, fetchImpl))
   app.use(createBillingRouter(prisma, stripe, { frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000' }))
+  app.use(createBillingWebhookRouter(prisma, stripeWebhookSecret))
   app.use(createAdminRouter(prisma))
   app.use(createTosRouter(prisma))
   app.use(createRankingRouter(prisma))
