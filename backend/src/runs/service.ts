@@ -91,6 +91,14 @@ export async function submitRun(
     }
   }
 
+  if (!challenge.yamlPath) {
+    // Database-defined challenges (Task 5 of docs/superpowers/plans/2026-08-11-challenge-authoring.md)
+    // aren't wired up yet — this branch exists only so the compiler accepts `yamlPath`'s now-nullable
+    // type (added by that plan's Task 1) without changing behavior for any of today's real,
+    // file-seeded challenges, all of which still have a non-null yamlPath.
+    return { kind: 'internal_error', error: 'failed to load challenge definition' }
+  }
+
   let challengeYaml: string
   try {
     challengeYaml = fs.readFileSync(path.join(CHALLENGES_DIR, challenge.yamlPath), 'utf-8')
