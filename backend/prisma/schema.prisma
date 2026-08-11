@@ -39,16 +39,24 @@ model User {
 }
 
 model Challenge {
-  id        String   @id
-  title     String
+  id               String   @id @default(uuid())
+  title            String
+  description      String?  @db.Text
+  objective        String?  @db.Text
+  technicalDetails String?  @db.Text
   // Freeform, matches whatever the YAML's top-level `category:` field says
   // (crud, contract, status, auth in the fixtures below) — no enum enforced.
-  category  String
-  points    Int
-  yamlPath  String
-  createdAt DateTime @default(now())
+  category         String
+  points           Int
+  // Null means this challenge is defined in the database (ChallengeCheck rows below),
+  // not a file under backend/challenges/ — see runs/service.ts's YAML-loading branch.
+  yamlPath         String?
+  archived         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  runs Run[]
+  runs   Run[]
+  checks ChallengeCheck[]
 }
 
 model Run {
@@ -109,4 +117,23 @@ model BillingSettings {
   amountCents     Int
   currency        String   @default("usd")
   updatedAt       DateTime @updatedAt
+}
+
+model ChallengeCheck {
+  id             String  @id @default(uuid())
+  challengeId    String
+  name           String
+  method         String
+  path           String
+  requestHeaders Json?
+  requestBody    Json?
+  expectStatus   Int
+  expectJson     Json?
+  expectHeaders  Json?
+  points         Int
+  order          Int
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId])
 }
