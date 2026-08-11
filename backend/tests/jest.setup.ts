@@ -33,3 +33,11 @@ process.env.VALIDATION_ENGINE_URL = process.env.VALIDATION_ENGINE_URL || 'http:/
 // base64-encoded. Deterministic test-only value (not a real secret) so LlmSettings
 // tests can encrypt/decrypt without requiring a real deploy-time key.
 process.env.ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || Buffer.alloc(32, 7).toString('base64')
+// STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET: not real Stripe credentials. The secret key is
+// only used to construct a Stripe SDK client — tests that need to hit the (mocked) API inject
+// their own fake `stripeClient` via `createApp({ stripeClient })` instead of relying on this
+// one. The webhook secret IS exercised for real by billing.webhook.test.ts, which uses
+// Stripe's own `Stripe.webhooks.generateTestHeaderString` helper to sign payloads against this
+// exact value — that's pure local HMAC verification, no network call, safe to run in CI.
+process.env.STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_deterministic_placeholder'
+process.env.STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test_deterministic_placeholder'

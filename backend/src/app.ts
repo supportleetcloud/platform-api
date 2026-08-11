@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import Stripe from 'stripe'
 import session from 'express-session'
 import passport from 'passport'
 import connectPgSimple from 'connect-pg-simple'
@@ -25,7 +26,7 @@ function isValidEncryptionKey(value: string | undefined): boolean {
   }
 }
 
-export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetch } = {}) {
+export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetch; stripeClient?: Stripe } = {}) {
   const prisma = deps.prisma ?? defaultPrisma
   const fetchImpl = deps.fetchImpl ?? fetch
   const app = express()
@@ -57,6 +58,18 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
   if (process.env.NODE_ENV === 'production' && !process.env.ENCRYPTION_KEY) {
     throw new Error('ENCRYPTION_KEY is required in production')
   }
+
+  // Fail fast rather than booting a production deploy where checkout/cancel silently 502s
+  // and the webhook silently 400s on every real Stripe event.
+  if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY is required in production')
+  }
+  if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_WEBHOOK_SECRET) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is required in production')
+  }
+
+  const stripe = deps.stripeClient ?? new Stripe(process.env.STRIPE_SECRET_KEY ?? 'sk_test_placeholder')
+  const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET ?? 'whsec_test_placeholder'
 
   app.use(
     session({

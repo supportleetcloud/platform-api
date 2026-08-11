@@ -20,7 +20,8 @@
     "js-yaml": "^5.2.3",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "stripe": "^22.5.0"
   },
   "devDependencies": {
     "@types/connect-pg-simple": "^7.0.3",
