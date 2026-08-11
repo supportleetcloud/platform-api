@@ -29,6 +29,8 @@ model User {
   isAdmin   Boolean  @default(false)
   isPaid    Boolean  @default(false)
   hideFromRanking Boolean @default(false)
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -98,4 +100,13 @@ model TosAcceptance {
   tosVersion TosVersion @relation(fields: [tosVersionId], references: [id])
 
   @@unique([userId, tosVersionId])
+}
+
+model BillingSettings {
+  id              String   @id
+  stripeProductId String
+  stripePriceId   String
+  amountCents     Int
+  currency        String   @default("usd")
+  updatedAt       DateTime @updatedAt
 }
