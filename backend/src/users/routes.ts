@@ -23,7 +23,7 @@ export function createMeRouter(prisma: PrismaClient): Router {
 
     const dbUser = await prisma.user.findUniqueOrThrow({
       where: { id: user.id },
-      select: { hideFromRanking: true },
+      select: { hideFromRanking: true, isPaid: true },
     })
 
     return {
@@ -33,6 +33,7 @@ export function createMeRouter(prisma: PrismaClient): Router {
       isAdmin: user.isAdmin,
       tosAcceptanceRequired,
       hideFromRanking: dbUser.hideFromRanking,
+      isPaid: dbUser.isPaid,
     }
   }
 

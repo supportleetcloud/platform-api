@@ -72,6 +72,7 @@ describe('GET /api/me', () => {
       isAdmin: true,
       tosAcceptanceRequired: false,
       hideFromRanking: false,
+      isPaid: false,
     })
   })
 
@@ -114,6 +115,15 @@ describe('GET /api/me', () => {
 
     // restore default so this test doesn't leak state into other tests in this file
     await agent.put('/api/me').send({ hideFromRanking: false })
+  })
+
+  it('GET /api/me includes isPaid', async () => {
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get('/api/me')
+    expect(res.body.isPaid).toBe(false)
   })
 
   it('PUT returns 400 when hideFromRanking is not a boolean', async () => {
