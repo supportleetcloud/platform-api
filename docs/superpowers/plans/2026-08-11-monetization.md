@@ -311,7 +311,7 @@ const USER_FREE = 'billing-service-test-free'
 const USER_PAID = 'billing-service-test-paid'
 const USER_FREE_WITH_CUSTOMER = 'billing-service-test-free-with-customer'
 
-function fakeStripe(overrides: Partial<Stripe> = {}): Stripe {
+function fakeStripe(overrides: Record<string, unknown> = {}): Stripe {
   return {
     checkout: { sessions: { create: jest.fn() } },
     subscriptions: { update: jest.fn(), retrieve: jest.fn() },
@@ -565,7 +565,12 @@ describe('billing/service', () => {
 
       expect(result).toEqual({ kind: 'updated', priceCents: 1999, currency: 'usd' })
       expect(createProductMock).not.toHaveBeenCalled()
-      expect(createPriceMock).toHaveBeenCalledWith(stripe, 'prod_existing', 1999, 'usd')
+      expect(createPriceMock).toHaveBeenCalledWith({
+        product: 'prod_existing',
+        unit_amount: 1999,
+        currency: 'usd',
+        recurring: { interval: 'month' },
+      })
       const settings = await prisma.billingSettings.findUniqueOrThrow({ where: { id: SETTINGS_ID } })
       expect(settings.stripePriceId).toBe('price_new_2')
       expect(settings.stripeProductId).toBe('prod_existing')
@@ -771,7 +776,7 @@ const prisma = new PrismaClient()
 const USER_ID = 'billing-routes-test-user'
 const SETTINGS_ID = 'singleton'
 
-function fakeStripe(overrides: Partial<Stripe> = {}): Stripe {
+function fakeStripe(overrides: Record<string, unknown> = {}): Stripe {
   return {
     checkout: { sessions: { create: jest.fn() } },
     subscriptions: { update: jest.fn(), retrieve: jest.fn() },
@@ -1173,7 +1178,7 @@ Modify `backend/tests/admin.routes.test.ts` — add a new `describe` block at th
 import Stripe from 'stripe'
 ```
 ```ts
-function fakeStripe(overrides: Partial<Stripe> = {}): Stripe {
+function fakeStripe(overrides: Record<string, unknown> = {}): Stripe {
   return {
     checkout: { sessions: { create: jest.fn() } },
     subscriptions: { update: jest.fn(), retrieve: jest.fn() },
