@@ -35,3 +35,6 @@ CREATE INDEX "ChallengeCheck_challengeId_idx" ON "ChallengeCheck"("challengeId")
 
 -- AddForeignKey
 ALTER TABLE "ChallengeCheck" ADD CONSTRAINT "ChallengeCheck_challengeId_fkey" FOREIGN KEY ("challengeId") REFERENCES "Challenge"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Drop DEFAULT from updatedAt (backfill already happened; should be Prisma-managed, not DB-managed)
+ALTER TABLE "Challenge" ALTER COLUMN "updatedAt" DROP DEFAULT;
