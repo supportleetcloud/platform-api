@@ -11,6 +11,7 @@ import { configurePassport } from './auth/passport'
 import { authRouter } from './auth/routes'
 import { createMeRouter } from './users/routes'
 import { createChallengesRouter } from './challenges/routes'
+import { createChallengesAdminRouter } from './challenges/admin-routes'
 import { createRunsRouter } from './runs/routes'
 import { createRunsWebhookRouter } from './runs/webhook'
 import { createBillingRouter } from './billing/routes'
@@ -104,6 +105,7 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
   app.use(authRouter)
   app.use(createMeRouter(prisma))
   app.use(createChallengesRouter(prisma))
+  app.use(createChallengesAdminRouter(prisma))
   app.use(createRunsRouter(prisma, fetchImpl, { validationEngineUrl, webhookBaseUrl, runTimeoutMs }))
   app.use(createRunsWebhookRouter(prisma, fetchImpl))
   app.use(createBillingRouter(prisma, stripe, { frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000' }))
