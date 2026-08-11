@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client'
 import { randomUUID, randomBytes } from 'crypto'
 import * as fs from 'fs'
 import * as path from 'path'
-import { CHALLENGES_DIR } from '../challenges/service'
+import { CHALLENGES_DIR, buildChallengeYaml } from '../challenges/service'
 
 const FREE_TIER_CHALLENGE_LIMIT = 2
 const FREE_TIER_ATTEMPT_LIMIT = 10
@@ -78,7 +78,7 @@ export async function submitRun(
     return { kind: 'validation_error', error: 'challengeId is required' }
   }
 
-  const challenge = await prisma.challenge.findUnique({ where: { id: input.challengeId } })
+  const challenge = await prisma.challenge.findFirst({ where: { id: input.challengeId, archived: false } })
   if (!challenge) {
     return { kind: 'validation_error', error: 'challenge not found' }
   }
@@ -91,20 +91,24 @@ export async function submitRun(
     }
   }
 
-  if (!challenge.yamlPath) {
-    // Database-defined challenges (Task 5 of docs/superpowers/plans/2026-08-11-challenge-authoring.md)
-    // aren't wired up yet — this branch exists only so the compiler accepts `yamlPath`'s now-nullable
-    // type (added by that plan's Task 1) without changing behavior for any of today's real,
-    // file-seeded challenges, all of which still have a non-null yamlPath.
-    return { kind: 'internal_error', error: 'failed to load challenge definition' }
-  }
-
   let challengeYaml: string
-  try {
-    challengeYaml = fs.readFileSync(path.join(CHALLENGES_DIR, challenge.yamlPath), 'utf-8')
-  } catch (err) {
-    console.error(`Failed to read challenge YAML for ${challenge.id} at ${challenge.yamlPath}:`, err)
-    return { kind: 'internal_error', error: 'failed to load challenge definition' }
+  if (challenge.yamlPath) {
+    try {
+      challengeYaml = fs.readFileSync(path.join(CHALLENGES_DIR, challenge.yamlPath), 'utf-8')
+    } catch (err) {
+      console.error(`Failed to read challenge YAML for ${challenge.id} at ${challenge.yamlPath}:`, err)
+      return { kind: 'internal_error', error: 'failed to load challenge definition' }
+    }
+  } else {
+    const checks = await prisma.challengeCheck.findMany({
+      where: { challengeId: challenge.id },
+      orderBy: { order: 'asc' },
+    })
+    if (checks.length === 0) {
+      console.error(`DB-defined challenge ${challenge.id} has no checks`)
+      return { kind: 'internal_error', error: 'failed to load challenge definition' }
+    }
+    challengeYaml = buildChallengeYaml(challenge, checks)
   }
 
   const jobId = randomUUID()

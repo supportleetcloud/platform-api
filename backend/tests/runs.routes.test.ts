@@ -188,6 +188,38 @@ describe('POST /api/runs', () => {
     await prisma.challenge.delete({ where: { id: brokenChallengeId } }).catch(() => {})
   })
 
+  it('returns 400 for an archived challenge, same as a nonexistent one', async () => {
+    const archivedChallengeId = 'runs-routes-test-archived-challenge'
+    await prisma.challenge.upsert({
+      where: { id: archivedChallengeId },
+      update: { archived: true },
+      create: {
+        id: archivedChallengeId,
+        title: 'Archived',
+        category: 'crud',
+        points: 10,
+        yamlPath: 'todo-api-crud.yaml',
+        archived: true,
+      },
+    })
+
+    const fetchImpl = jest.fn() as any
+    const app = createApp({ prisma, fetchImpl })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.post('/api/runs').send({
+      challengeId: archivedChallengeId,
+      targetUrl: 'https://candidate.example.com',
+      confirmedAuthorization: true,
+    })
+
+    expect(res.status).toBe(400)
+    expect(fetchImpl).not.toHaveBeenCalled()
+
+    await prisma.challenge.delete({ where: { id: archivedChallengeId } }).catch(() => {})
+  })
+
   it('blocks a 3rd distinct free-tier challenge', async () => {
     const otherChallengeA = 'runs-routes-test-challenge-a'
     const otherChallengeB = 'runs-routes-test-challenge-b'
