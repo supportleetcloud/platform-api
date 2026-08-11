@@ -8,6 +8,7 @@
     "start": "node dist/server.js",
     "test": "jest --runInBand",
     "seed:challenges": "ts-node scripts/seed-challenges.ts",
+    "seed:billing": "ts-node scripts/seed-billing.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
