@@ -94,6 +94,13 @@ describe('billing/service', () => {
       expect(status.isPaid).toBe(true)
       expect(status.cancelAtPeriodEnd).toBe(true)
     })
+
+    it('degrades cancelAtPeriodEnd to false, without failing the whole response, when the live Stripe call fails', async () => {
+      const retrieve = jest.fn().mockRejectedValue(new Error('Stripe API unavailable'))
+      const status = await getBillingStatus(prisma, fakeStripe({ subscriptions: { update: jest.fn(), retrieve } }), USER_PAID)
+      expect(status.isPaid).toBe(true)
+      expect(status.cancelAtPeriodEnd).toBe(false)
+    })
   })
 
   describe('startCheckout', () => {
@@ -189,7 +196,11 @@ describe('billing/service', () => {
     })
 
     it('sets isPaid false and clears stripeSubscriptionId on subscription_deleted, found by customerId', async () => {
-      await applyWebhookEvent(prisma, { kind: 'subscription_deleted', customerId: 'cus_test_paid' })
+      await applyWebhookEvent(prisma, {
+        kind: 'subscription_deleted',
+        customerId: 'cus_test_paid',
+        subscriptionId: 'sub_test_paid',
+      })
 
       const user = await prisma.user.findUniqueOrThrow({ where: { id: USER_PAID } })
       expect(user.isPaid).toBe(false)
@@ -203,8 +214,48 @@ describe('billing/service', () => {
       })
     })
 
+    it('is a no-op for a stale subscription_deleted event whose subscriptionId no longer matches the user (resubscribed)', async () => {
+      // Simulates a cancel-then-resubscribe: the user's CURRENT subscription is 'sub_new',
+      // but a `deleted` event for the OLD subscription 'sub_old' arrives late/out-of-order
+      // (same stripeCustomerId, since that id is stable across resubscribes).
+      await prisma.user.update({
+        where: { id: USER_PAID },
+        data: { isPaid: true, stripeCustomerId: 'cus_test_paid', stripeSubscriptionId: 'sub_new' },
+      })
+
+      await applyWebhookEvent(prisma, {
+        kind: 'subscription_deleted',
+        customerId: 'cus_test_paid',
+        subscriptionId: 'sub_old',
+      })
+
+      const user = await prisma.user.findUniqueOrThrow({ where: { id: USER_PAID } })
+      expect(user.isPaid).toBe(true)
+      expect(user.stripeSubscriptionId).toBe('sub_new')
+
+      await prisma.user.update({
+        where: { id: USER_PAID },
+        data: { isPaid: true, stripeCustomerId: 'cus_test_paid', stripeSubscriptionId: 'sub_test_paid' },
+      })
+    })
+
     it('is a no-op for ignored events', async () => {
       await expect(applyWebhookEvent(prisma, { kind: 'ignored' })).resolves.toBeUndefined()
+    })
+
+    it('does not throw on checkout_completed for a user id that no longer exists (C1 repro)', async () => {
+      // Reproduces the crash the reviewer found: a validly-signed checkout.session.completed
+      // webhook for a deleted/nonexistent user used to hit prisma.user.update() unconditionally,
+      // which throws on a missing row — uncaught, since Express 4 doesn't catch async
+      // rejections. Stripe retries for up to 3 days, so this used to be a crash loop.
+      await expect(
+        applyWebhookEvent(prisma, {
+          kind: 'checkout_completed',
+          userId: 'billing-service-test-does-not-exist',
+          customerId: 'cus_ghost',
+          subscriptionId: 'sub_ghost',
+        })
+      ).resolves.toBeUndefined()
     })
   })
 

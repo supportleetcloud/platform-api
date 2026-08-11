@@ -17,8 +17,13 @@ export function createBillingWebhookRouter(prisma: PrismaClient, webhookSecret: 
       return
     }
 
-    await applyWebhookEvent(prisma, event)
-    res.status(200).json({ received: true })
+    try {
+      await applyWebhookEvent(prisma, event)
+      res.status(200).json({ received: true })
+    } catch (err) {
+      console.error('Failed to process Stripe webhook event:', err)
+      res.status(200).json({ received: true, processed: false })
+    }
   })
 
   return router

@@ -2,7 +2,7 @@ import Stripe from 'stripe'
 
 export type WebhookEvent =
   | { kind: 'checkout_completed'; userId: string; customerId: string; subscriptionId: string }
-  | { kind: 'subscription_deleted'; customerId: string }
+  | { kind: 'subscription_deleted'; customerId: string; subscriptionId: string }
   | { kind: 'ignored' }
 
 export async function createCheckoutSession(
@@ -48,7 +48,7 @@ export function constructWebhookEvent(rawBody: Buffer, signature: string, webhoo
   if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as Stripe.Subscription
     const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id
-    return { kind: 'subscription_deleted', customerId }
+    return { kind: 'subscription_deleted', customerId, subscriptionId: subscription.id }
   }
 
   return { kind: 'ignored' }

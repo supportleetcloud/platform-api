@@ -24,8 +24,13 @@ export async function getBillingStatus(prisma: PrismaClient, stripe: Stripe, use
 
   let cancelAtPeriodEnd = false
   if (user.isPaid && user.stripeSubscriptionId) {
-    const status = await getSubscriptionStatus(stripe, user.stripeSubscriptionId)
-    cancelAtPeriodEnd = status.cancelAtPeriodEnd
+    try {
+      const status = await getSubscriptionStatus(stripe, user.stripeSubscriptionId)
+      cancelAtPeriodEnd = status.cancelAtPeriodEnd
+    } catch (err) {
+      console.error('Failed to fetch live subscription status from Stripe:', err)
+      cancelAtPeriodEnd = false
+    }
   }
 
   return {
@@ -81,6 +86,11 @@ export async function requestCancellation(prisma: PrismaClient, stripe: Stripe, 
 
 export async function applyWebhookEvent(prisma: PrismaClient, event: WebhookEvent): Promise<void> {
   if (event.kind === 'checkout_completed') {
+    const user = await prisma.user.findUnique({ where: { id: event.userId } })
+    if (!user) {
+      console.error(`checkout.session.completed for unknown user id ${event.userId}; no-op`)
+      return
+    }
     await prisma.user.update({
       where: { id: event.userId },
       data: { stripeCustomerId: event.customerId, stripeSubscriptionId: event.subscriptionId, isPaid: true },
@@ -89,10 +99,12 @@ export async function applyWebhookEvent(prisma: PrismaClient, event: WebhookEven
   }
 
   if (event.kind === 'subscription_deleted') {
-    const user = await prisma.user.findFirst({ where: { stripeCustomerId: event.customerId } })
-    if (!user) return
-    await prisma.user.update({
-      where: { id: user.id },
+    // Scoped to the CURRENT stripeSubscriptionId so a stale/out-of-order delivery of an
+    // old subscription's `deleted` event can't revoke access granted by a later resubscribe
+    // (stripeCustomerId is stable across cancel-then-resubscribe; stripeSubscriptionId is not).
+    // updateMany (not update) so a stale event that matches zero rows silently no-ops.
+    await prisma.user.updateMany({
+      where: { stripeCustomerId: event.customerId, stripeSubscriptionId: event.subscriptionId },
       data: { isPaid: false, stripeSubscriptionId: null },
     })
     return

@@ -98,6 +98,26 @@ admin has configured at `/admin/llm-settings` (Claude, OpenAI, OpenRouter, or Ol
 3. Until a provider is configured, completed runs still work normally — their feedback simply
    resolves to unavailable (`feedbackStatus: "failed"`), never blocking the run itself.
 
+## Billing
+
+Paid access is a Stripe subscription (`checkout.session.completed` grants it,
+`customer.subscription.deleted` revokes it) — see
+`docs/superpowers/specs/2026-08-11-monetization-design.md` for the full design.
+
+1. Set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in `backend/.env`. Both are required —
+   unlike most other config here, there is no dev-safe default: the backend refuses to boot
+   without them outside the test environment, precisely so a deploy can never silently accept
+   the publicly-known placeholder webhook secret this repo ships in its test suite.
+2. In the Stripe dashboard, register a webhook endpoint pointing at
+   `<backend-url>/api/webhooks/stripe`, subscribed to exactly two events:
+   `checkout.session.completed` and `customer.subscription.deleted`. Copy its signing secret
+   into `STRIPE_WEBHOOK_SECRET`.
+3. Run `cd backend && npm run seed:billing` once, with real Stripe keys configured, before
+   opening signups. This creates the Stripe Product/Price and the single `BillingSettings`
+   row the app reads the current price from. Without it, `BillingSettings` has no row and
+   every user's "Upgrade" button returns `503 not_configured` indefinitely — the admin can
+   also set/change the price later at `/admin/billing` without rerunning the seed script.
+
 ## Terms of Use
 
 Every user must accept the current Terms of Use — checkbox + version + timestamp — before

@@ -62,13 +62,18 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
     throw new Error('ENCRYPTION_KEY is required in production')
   }
 
-  // Fail fast rather than booting a production deploy where checkout/cancel silently 502s
-  // and the webhook silently 400s on every real Stripe event.
-  if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_SECRET_KEY) {
-    throw new Error('STRIPE_SECRET_KEY is required in production')
+  // Fail fast rather than booting a deploy where checkout/cancel silently 502s and the
+  // webhook silently 400s on every real Stripe event. Gated on `!== 'test'`, not
+  // `=== 'production'`: docker-compose.yml deliberately sets NODE_ENV=development for the
+  // shipped container (see the session-cookie comment below), so a production-only guard
+  // would never fire there — and a missing STRIPE_WEBHOOK_SECRET in that path means the
+  // webhook route falls back to the publicly-known placeholder secret below, accepting any
+  // request forged with it. The placeholder fallbacks are for the test suite only.
+  if (process.env.NODE_ENV !== 'test' && !process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY is required outside the test environment')
   }
-  if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_WEBHOOK_SECRET) {
-    throw new Error('STRIPE_WEBHOOK_SECRET is required in production')
+  if (process.env.NODE_ENV !== 'test' && !process.env.STRIPE_WEBHOOK_SECRET) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is required outside the test environment')
   }
 
   const stripe = deps.stripeClient ?? new Stripe(process.env.STRIPE_SECRET_KEY ?? 'sk_test_placeholder')

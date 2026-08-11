@@ -57,19 +57,29 @@ export function createAdminRouter(prisma: PrismaClient, stripe: Stripe): Router 
   })
 
   router.get('/api/admin/billing-settings', requireAuth, requireAdmin, async (_req, res) => {
-    const settings = await getAdminBillingSettings(prisma)
-    res.json(settings)
+    try {
+      const settings = await getAdminBillingSettings(prisma)
+      res.json(settings)
+    } catch (err) {
+      console.error('Failed to load billing settings:', err)
+      res.status(500).json({ error: 'failed to load billing settings' })
+    }
   })
 
   router.put('/api/admin/billing-settings', requireAuth, requireAdmin, async (req, res) => {
-    const amountCents = req.body?.amountCents
-    const result = await updatePrice(prisma, stripe, amountCents)
+    try {
+      const amountCents = req.body?.amountCents
+      const result = await updatePrice(prisma, stripe, amountCents)
 
-    if (result.kind === 'validation_error') {
-      res.status(400).json({ error: result.error })
-      return
+      if (result.kind === 'validation_error') {
+        res.status(400).json({ error: result.error })
+        return
+      }
+      res.json({ priceCents: result.priceCents, currency: result.currency })
+    } catch (err) {
+      console.error('Failed to update billing settings:', err)
+      res.status(500).json({ error: 'failed to update billing settings' })
     }
-    res.json({ priceCents: result.priceCents, currency: result.currency })
   })
 
   return router

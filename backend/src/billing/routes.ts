@@ -10,35 +10,50 @@ export function createBillingRouter(prisma: PrismaClient, stripe: Stripe, config
   const router = Router()
 
   router.get('/api/billing/status', requireAuth, async (req, res) => {
-    const user = req.user as { id: string }
-    const status = await getBillingStatus(prisma, stripe, user.id)
-    res.status(200).json(status)
+    try {
+      const user = req.user as { id: string }
+      const status = await getBillingStatus(prisma, stripe, user.id)
+      res.status(200).json(status)
+    } catch (err) {
+      console.error('Failed to load billing status:', err)
+      res.status(500).json({ error: 'failed to load billing status' })
+    }
   })
 
   router.post('/api/billing/checkout-session', requireAuth, async (req, res) => {
-    const user = req.user as { id: string }
-    const result = await startCheckout(prisma, stripe, user.id, config.frontendUrl)
+    try {
+      const user = req.user as { id: string }
+      const result = await startCheckout(prisma, stripe, user.id, config.frontendUrl)
 
-    if (result.kind === 'created') {
-      res.status(200).json({ url: result.url })
-      return
+      if (result.kind === 'created') {
+        res.status(200).json({ url: result.url })
+        return
+      }
+      if (result.kind === 'already_paid') {
+        res.status(409).json({ error: 'already_paid' })
+        return
+      }
+      res.status(503).json({ error: 'not_configured' })
+    } catch (err) {
+      console.error('Failed to start checkout:', err)
+      res.status(500).json({ error: 'failed to start checkout' })
     }
-    if (result.kind === 'already_paid') {
-      res.status(409).json({ error: 'already_paid' })
-      return
-    }
-    res.status(503).json({ error: 'not_configured' })
   })
 
   router.post('/api/billing/cancel', requireAuth, async (req, res) => {
-    const user = req.user as { id: string }
-    const result = await requestCancellation(prisma, stripe, user.id)
+    try {
+      const user = req.user as { id: string }
+      const result = await requestCancellation(prisma, stripe, user.id)
 
-    if (result.kind === 'canceled') {
-      res.status(200).json({ canceled: true })
-      return
+      if (result.kind === 'canceled') {
+        res.status(200).json({ canceled: true })
+        return
+      }
+      res.status(409).json({ error: 'no_subscription' })
+    } catch (err) {
+      console.error('Failed to cancel subscription:', err)
+      res.status(500).json({ error: 'failed to cancel subscription' })
     }
-    res.status(409).json({ error: 'no_subscription' })
   })
 
   return router

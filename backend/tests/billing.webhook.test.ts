@@ -67,7 +67,7 @@ describe('POST /api/webhooks/stripe', () => {
     const payload = JSON.stringify({
       id: 'evt_test_2',
       type: 'customer.subscription.deleted',
-      data: { object: { customer: 'cus_webhook_test' } },
+      data: { object: { id: 'sub_webhook_test', customer: 'cus_webhook_test' } },
     })
 
     const res = await request(app)
@@ -93,5 +93,54 @@ describe('POST /api/webhooks/stripe', () => {
       .send(payload)
 
     expect(res.status).toBe(200)
+  })
+
+  it('does not crash on a validly-signed checkout.session.completed for a user id that no longer exists (C1 repro)', async () => {
+    const app = createApp({ prisma })
+    const payload = JSON.stringify({
+      id: 'evt_test_4',
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          client_reference_id: 'billing-webhook-test-does-not-exist',
+          customer: 'cus_ghost',
+          subscription: 'sub_ghost',
+        },
+      },
+    })
+
+    const res = await request(app)
+      .post('/api/webhooks/stripe')
+      .set('Content-Type', 'application/json')
+      .set('stripe-signature', sign(payload))
+      .send(payload)
+
+    // service.ts's existence guard makes this a clean no-op, not a thrown error, so the
+    // route responds with its normal success body rather than the processed:false path.
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ received: true })
+  })
+
+  it('returns 200 with processed:false (not a crash) when applying an event throws unexpectedly', async () => {
+    const failingPrisma = {
+      user: { findUnique: jest.fn().mockRejectedValue(new Error('db unavailable')) },
+    } as unknown as PrismaClient
+    const app = createApp({ prisma: failingPrisma })
+    const payload = JSON.stringify({
+      id: 'evt_test_5',
+      type: 'checkout.session.completed',
+      data: {
+        object: { client_reference_id: 'some-user', customer: 'cus_x', subscription: 'sub_x' },
+      },
+    })
+
+    const res = await request(app)
+      .post('/api/webhooks/stripe')
+      .set('Content-Type', 'application/json')
+      .set('stripe-signature', sign(payload))
+      .send(payload)
+
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ received: true, processed: false })
   })
 })
