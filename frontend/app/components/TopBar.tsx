@@ -24,6 +24,7 @@ export default function TopBar({ location, username, isAdmin }: TopBarProps) {
               <a href="/admin/llm-settings">LLM</a>
               <a href="/admin/tos">ToS</a>
               <a href="/admin/billing">Billing</a>
+              <a href="/admin/challenges">Challenges</a>
             </>
           )}
           <span>{username}</span>
