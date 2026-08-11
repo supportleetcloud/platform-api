@@ -1794,10 +1794,23 @@ Replace `frontend/app/dashboard/page.tsx` in full:
 ```tsx
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useResource, useTosGate, backendFetch } from '../lib/api'
 import TopBar from '../components/TopBar'
+
+// useSearchParams() requires a Suspense boundary in the Next.js App Router (otherwise
+// `next build` fails prerendering this page) — isolated into its own component so only
+// this piece opts into that requirement, not the whole page.
+function CheckoutBanner() {
+  const searchParams = useSearchParams()
+  if (searchParams.get('checkout') !== 'success') return null
+  return (
+    <p className="state-message">
+      Subscription activating — this can take a few seconds. Refresh if your plan doesn&apos;t update.
+    </p>
+  )
+}
 
 type Me = {
   id: string
@@ -1827,7 +1840,6 @@ export default function DashboardPage() {
   const me = useResource<Me>('/api/me', { redirectOn401: true })
   const challenges = useResource<Challenge[]>('/api/challenges')
   const billing = useResource<BillingStatus>('/api/billing/status')
-  const searchParams = useSearchParams()
   useTosGate(me)
 
   const [hideFromRanking, setHideFromRanking] = useState(false)
@@ -1933,11 +1945,9 @@ export default function DashboardPage() {
           <p className="page-subtitle">Pick a challenge, submit your API&apos;s URL, watch the checks run.</p>
         </div>
 
-        {searchParams.get('checkout') === 'success' && (
-          <p className="state-message">
-            Subscription activating — this can take a few seconds. Refresh if your plan doesn&apos;t update.
-          </p>
-        )}
+        <Suspense fallback={null}>
+          <CheckoutBanner />
+        </Suspense>
 
         <div>
           <p className="section-label" style={{ marginBottom: 'var(--space-3)' }}>
