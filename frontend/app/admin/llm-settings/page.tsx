@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useResource, backendFetch } from '../../lib/api'
 import TopBar from '../../components/TopBar'
 
@@ -33,21 +33,31 @@ export default function AdminLlmSettingsPage() {
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [modelsLoading, setModelsLoading] = useState(false)
   const [modelsError, setModelsError] = useState<string | null>(null)
+  const modelsGenerationRef = useRef(0)
 
   function fetchOllamaModels(url: string) {
     if (url.trim().length === 0) return
+
+    const generation = ++modelsGenerationRef.current
+
+    function isCurrent() {
+      return generation === modelsGenerationRef.current
+    }
+
     setModelsLoading(true)
     setModelsError(null)
 
     backendFetch(`/api/admin/llm-settings/ollama-models?baseUrl=${encodeURIComponent(url)}`)
       .then(async (res) => {
         if (res.status !== 200) {
+          if (!isCurrent()) return
           setOllamaModels([])
           setModelsError('Could not load Ollama models.')
           setModelsLoading(false)
           return
         }
         const body = await res.json().catch(() => ({}))
+        if (!isCurrent()) return
         const models: string[] = Array.isArray(body.models) ? body.models : []
         if (models.length === 0) {
           setOllamaModels([])
@@ -59,6 +69,7 @@ export default function AdminLlmSettingsPage() {
         setModelsLoading(false)
       })
       .catch(() => {
+        if (!isCurrent()) return
         setOllamaModels([])
         setModelsError('Could not load Ollama models.')
         setModelsLoading(false)
@@ -134,7 +145,7 @@ export default function AdminLlmSettingsPage() {
   if (settings.error) return <p className="state-message">Could not load LLM settings.</p>
   if (!settings.data) return null
 
-  const showModelDropdown = provider === 'ollama' && !modelsError
+  const showModelDropdown = provider === 'ollama' && !modelsError && (modelsLoading || ollamaModels.length > 0)
 
   return (
     <div className="page">

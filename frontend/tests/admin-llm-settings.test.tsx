@@ -69,6 +69,18 @@ describe('AdminLlmSettingsPage', () => {
     expect(screen.getByLabelText(/base url/i)).toBeInTheDocument()
   })
 
+  it('keeps the model field as a plain text input when switching to ollama with an empty base URL', async () => {
+    mockFetch({ me: { status: 200, json: ADMIN_ME }, get: { status: 200, json: SETTINGS } })
+    const user = userEvent.setup()
+
+    render(<AdminLlmSettingsPage />)
+    await waitFor(() => screen.getByDisplayValue('claude-sonnet-5'))
+
+    await user.selectOptions(screen.getByLabelText(/provider/i), 'ollama')
+
+    expect(screen.getByLabelText(/^model$/i).tagName).toBe('INPUT')
+  })
+
   it('saves successfully and shows a confirmation', async () => {
     mockFetch({
       me: { status: 200, json: ADMIN_ME },
