@@ -86,19 +86,19 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
         {challenge.data.description && (
           <div>
             <p className="section-label">Description</p>
-            <p>{challenge.data.description}</p>
+            <p style={{ whiteSpace: 'pre-wrap' }}>{challenge.data.description}</p>
           </div>
         )}
         {challenge.data.objective && (
           <div>
             <p className="section-label">Objective</p>
-            <p>{challenge.data.objective}</p>
+            <p style={{ whiteSpace: 'pre-wrap' }}>{challenge.data.objective}</p>
           </div>
         )}
         {challenge.data.technicalDetails && (
           <div>
             <p className="section-label">Technical Details</p>
-            <p>{challenge.data.technicalDetails}</p>
+            <p style={{ whiteSpace: 'pre-wrap' }}>{challenge.data.technicalDetails}</p>
           </div>
         )}
 

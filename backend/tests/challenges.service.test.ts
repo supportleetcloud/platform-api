@@ -163,6 +163,54 @@ describe('admin challenge CRUD', () => {
       }
     })
 
+    it('rejects a check with an array for requestBody', async () => {
+      const result = await createChallenge(prisma, {
+        ...VALID_INPUT,
+        checks: [{ ...VALID_INPUT.checks[0], requestBody: [1, 2, 3] }],
+      })
+      expect(result.kind).toBe('validation_error')
+      if (result.kind === 'validation_error') {
+        expect(result.error).toBe('check 1: requestBody must be a JSON object')
+      }
+    })
+
+    it('rejects a check with an array for expectJson', async () => {
+      const result = await createChallenge(prisma, {
+        ...VALID_INPUT,
+        checks: [{ ...VALID_INPUT.checks[0], expectJson: [1, 2, 3] }],
+      })
+      expect(result.kind).toBe('validation_error')
+      if (result.kind === 'validation_error') {
+        expect(result.error).toBe('check 1: expectJson must be a JSON object')
+      }
+    })
+
+    it('rejects a check with a non-string value in requestHeaders', async () => {
+      const result = await createChallenge(prisma, {
+        ...VALID_INPUT,
+        checks: [
+          { ...VALID_INPUT.checks[0], requestHeaders: { 'X-Count': { n: 1 } } as unknown as Record<string, string> },
+        ],
+      })
+      expect(result.kind).toBe('validation_error')
+      if (result.kind === 'validation_error') {
+        expect(result.error).toBe('check 1: requestHeaders must be a JSON object with string values')
+      }
+    })
+
+    it('rejects a check with a non-string value in expectHeaders', async () => {
+      const result = await createChallenge(prisma, {
+        ...VALID_INPUT,
+        checks: [
+          { ...VALID_INPUT.checks[0], expectHeaders: { 'X-Count': { n: 1 } } as unknown as Record<string, string> },
+        ],
+      })
+      expect(result.kind).toBe('validation_error')
+      if (result.kind === 'validation_error') {
+        expect(result.error).toBe('check 1: expectHeaders must be a JSON object with string values')
+      }
+    })
+
     it('creates the challenge, sums points, and creates ordered checks', async () => {
       const result = await createChallenge(prisma, VALID_INPUT)
       expect(result.kind).toBe('saved')

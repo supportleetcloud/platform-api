@@ -45,6 +45,14 @@ export async function seedChallengesFromDirectory(
 
 const KNOWN_CATEGORIES = ['crud', 'contract', 'status', 'auth']
 
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function hasOnlyStringValues(value: Record<string, unknown>): boolean {
+  return Object.values(value).every((v) => typeof v === 'string')
+}
+
 export type ChallengeCheckInput = {
   name: string
   method: string
@@ -93,6 +101,22 @@ function validateChallengeInput(input: ChallengeInput): string | null {
     }
     if (!Number.isInteger(check.points) || check.points <= 0) {
       return `${label}: points must be a positive integer`
+    }
+    if (check.requestBody !== undefined && !isJsonObject(check.requestBody)) {
+      return `${label}: requestBody must be a JSON object`
+    }
+    if (check.expectJson !== undefined && !isJsonObject(check.expectJson)) {
+      return `${label}: expectJson must be a JSON object`
+    }
+    if (check.requestHeaders !== undefined) {
+      if (!isJsonObject(check.requestHeaders) || !hasOnlyStringValues(check.requestHeaders)) {
+        return `${label}: requestHeaders must be a JSON object with string values`
+      }
+    }
+    if (check.expectHeaders !== undefined) {
+      if (!isJsonObject(check.expectHeaders) || !hasOnlyStringValues(check.expectHeaders)) {
+        return `${label}: expectHeaders must be a JSON object with string values`
+      }
     }
   }
   return null
