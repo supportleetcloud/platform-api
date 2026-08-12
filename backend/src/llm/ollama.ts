@@ -16,6 +16,6 @@ export async function listOllamaModels(fetchImpl: typeof fetch, baseUrl: string)
   }
 
   const body = await response.json()
-  const models = Array.isArray(body.models) ? body.models : []
+  const models = Array.isArray(body?.models) ? body.models : []
   return models.map((model: { name: string }) => model.name)
 }
