@@ -162,4 +162,38 @@ describe('ChallengeDetailPage', () => {
       expect(replaceMock).toHaveBeenCalledWith('/accept-terms')
     })
   })
+
+  it('renders description, objective, and technicalDetails when present', async () => {
+    mockFetch({
+      get: {
+        status: 200,
+        json: {
+          ...CHALLENGE,
+          description: 'Build a small API.',
+          objective: 'Prove you can handle CRUD.',
+          technicalDetails: 'Use any language you like.',
+        },
+      },
+    })
+
+    render(<ChallengeDetailPage params={{ id: 'todo-api-crud' }} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Build a small API.')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Prove you can handle CRUD.')).toBeInTheDocument()
+    expect(screen.getByText('Use any language you like.')).toBeInTheDocument()
+  })
+
+  it('renders no description/objective/technicalDetails sections when all three are absent', async () => {
+    mockFetch({ get: { status: 200, json: CHALLENGE } })
+
+    render(<ChallengeDetailPage params={{ id: 'todo-api-crud' }} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Build a Todo CRUD API')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Objective')).not.toBeInTheDocument()
+    expect(screen.queryByText('Technical Details')).not.toBeInTheDocument()
+  })
 })

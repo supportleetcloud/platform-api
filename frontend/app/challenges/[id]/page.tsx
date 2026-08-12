@@ -18,6 +18,9 @@ type ChallengeDetail = {
   title: string
   category: string
   points: number
+  description?: string | null
+  objective?: string | null
+  technicalDetails?: string | null
 }
 
 export default function ChallengeDetailPage({ params }: { params: { id: string } }) {
@@ -79,6 +82,25 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
             <span className="badge-category">{challenge.data.category}</span> {challenge.data.points} pts
           </p>
         </div>
+
+        {challenge.data.description && (
+          <div>
+            <p className="section-label">Description</p>
+            <p>{challenge.data.description}</p>
+          </div>
+        )}
+        {challenge.data.objective && (
+          <div>
+            <p className="section-label">Objective</p>
+            <p>{challenge.data.objective}</p>
+          </div>
+        )}
+        {challenge.data.technicalDetails && (
+          <div>
+            <p className="section-label">Technical Details</p>
+            <p>{challenge.data.technicalDetails}</p>
+          </div>
+        )}
 
         <form className="panel" onSubmit={handleSubmit}>
           <div className="field">
