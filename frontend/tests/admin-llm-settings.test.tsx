@@ -17,11 +17,13 @@ function mockFetch(routes: {
   me?: { status: number; json?: unknown }
   get?: { status: number; json?: unknown }
   put?: { status: number; json?: unknown }
+  models?: { status: number; json?: unknown }
 }) {
   global.fetch = vi.fn((url: string, init?: RequestInit) => {
     const isMe = url.includes('/api/me')
+    const isModels = url.includes('/ollama-models')
     const isPut = init?.method === 'PUT'
-    const route = isMe ? routes.me : isPut ? routes.put : routes.get
+    const route = isMe ? routes.me : isModels ? routes.models : isPut ? routes.put : routes.get
     const status = route?.status ?? 500
     return Promise.resolve({ status, json: async () => route?.json })
   }) as any
@@ -104,5 +106,63 @@ describe('AdminLlmSettingsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('model is required')).toBeInTheDocument()
     })
+  })
+
+  it('renders a model dropdown populated with fetched models when the saved provider is ollama', async () => {
+    mockFetch({
+      me: { status: 200, json: ADMIN_ME },
+      get: {
+        status: 200,
+        json: { provider: 'ollama', model: 'llama3:latest', baseUrl: 'http://localhost:11434', apiKeySet: false },
+      },
+      models: { status: 200, json: { models: ['llama3:latest', 'mistral:latest'] } },
+    })
+
+    render(<AdminLlmSettingsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'mistral:latest' })).toBeInTheDocument()
+    })
+    expect(screen.getByLabelText(/^model$/i).tagName).toBe('SELECT')
+    expect(screen.getByDisplayValue('llama3:latest')).toBeInTheDocument()
+  })
+
+  it('fetches models when the base URL is edited and blurred while provider is ollama', async () => {
+    mockFetch({
+      me: { status: 200, json: ADMIN_ME },
+      get: { status: 200, json: SETTINGS },
+      models: { status: 200, json: { models: ['llama3:latest'] } },
+    })
+    const user = userEvent.setup()
+
+    render(<AdminLlmSettingsPage />)
+    await waitFor(() => screen.getByDisplayValue('claude-sonnet-5'))
+
+    await user.selectOptions(screen.getByLabelText(/provider/i), 'ollama')
+    await user.type(screen.getByLabelText(/base url/i), 'http://localhost:11434')
+    await user.tab()
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'llama3:latest' })).toBeInTheDocument()
+    })
+  })
+
+  it('falls back to a text input and shows an error when the ollama models fetch fails', async () => {
+    mockFetch({
+      me: { status: 200, json: ADMIN_ME },
+      get: {
+        status: 200,
+        json: { provider: 'ollama', model: 'llama3:latest', baseUrl: 'http://localhost:11434', apiKeySet: false },
+      },
+      models: { status: 502, json: { error: 'could not reach ollama' } },
+    })
+
+    render(<AdminLlmSettingsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Could not load Ollama models.')).toBeInTheDocument()
+    })
+    expect(screen.getByLabelText(/^model$/i).tagName).toBe('INPUT')
+    expect(screen.getByDisplayValue('llama3:latest')).toBeInTheDocument()
   })
 })

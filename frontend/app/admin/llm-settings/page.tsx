@@ -30,13 +30,69 @@ export default function AdminLlmSettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
+  const [ollamaModels, setOllamaModels] = useState<string[]>([])
+  const [modelsLoading, setModelsLoading] = useState(false)
+  const [modelsError, setModelsError] = useState<string | null>(null)
+
+  function fetchOllamaModels(url: string) {
+    if (url.trim().length === 0) return
+    setModelsLoading(true)
+    setModelsError(null)
+
+    backendFetch(`/api/admin/llm-settings/ollama-models?baseUrl=${encodeURIComponent(url)}`)
+      .then(async (res) => {
+        if (res.status !== 200) {
+          setOllamaModels([])
+          setModelsError('Could not load Ollama models.')
+          setModelsLoading(false)
+          return
+        }
+        const body = await res.json().catch(() => ({}))
+        const models: string[] = Array.isArray(body.models) ? body.models : []
+        if (models.length === 0) {
+          setOllamaModels([])
+          setModelsError('Could not load Ollama models.')
+          setModelsLoading(false)
+          return
+        }
+        setOllamaModels(models)
+        setModelsLoading(false)
+      })
+      .catch(() => {
+        setOllamaModels([])
+        setModelsError('Could not load Ollama models.')
+        setModelsLoading(false)
+      })
+  }
+
   useEffect(() => {
     if (settings.data) {
       setProvider(settings.data.provider ?? 'claude')
       setModel(settings.data.model ?? '')
       setBaseUrl(settings.data.baseUrl ?? '')
+      if (settings.data.provider === 'ollama' && settings.data.baseUrl) {
+        fetchOllamaModels(settings.data.baseUrl)
+      }
     }
   }, [settings.data])
+
+  function handleProviderChange(event: React.ChangeEvent<HTMLSelectElement>) {
+    const next = event.target.value
+    setProvider(next)
+    if (next === 'ollama') {
+      if (baseUrl.trim().length > 0) {
+        fetchOllamaModels(baseUrl)
+      }
+    } else {
+      setOllamaModels([])
+      setModelsError(null)
+      setModelsLoading(false)
+    }
+  }
+
+  function handleBaseUrlBlur(event: React.FocusEvent<HTMLInputElement>) {
+    fetchOllamaModels(event.target.value)
+  }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -78,6 +134,8 @@ export default function AdminLlmSettingsPage() {
   if (settings.error) return <p className="state-message">Could not load LLM settings.</p>
   if (!settings.data) return null
 
+  const showModelDropdown = provider === 'ollama' && !modelsError
+
   return (
     <div className="page">
       <TopBar location="admin / llm-settings" username={me.data.username} isAdmin={me.data.isAdmin} />
@@ -92,7 +150,7 @@ export default function AdminLlmSettingsPage() {
             <label className="field-label" htmlFor="provider">
               Provider
             </label>
-            <select id="provider" value={provider} onChange={(event) => setProvider(event.target.value)}>
+            <select id="provider" value={provider} onChange={handleProviderChange}>
               <option value="claude">Claude</option>
               <option value="openai">OpenAI</option>
               <option value="openrouter">OpenRouter</option>
@@ -104,12 +162,32 @@ export default function AdminLlmSettingsPage() {
             <label className="field-label" htmlFor="model">
               Model
             </label>
-            <input
-              id="model"
-              value={model}
-              onChange={(event) => setModel(event.target.value)}
-              placeholder={provider === 'openrouter' ? 'anthropic/claude-3.5-sonnet' : 'claude-sonnet-5'}
-            />
+            {showModelDropdown ? (
+              <select
+                id="model"
+                value={model}
+                onChange={(event) => setModel(event.target.value)}
+                disabled={modelsLoading}
+              >
+                {modelsLoading ? (
+                  <option value="">Loading models…</option>
+                ) : (
+                  ollamaModels.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))
+                )}
+              </select>
+            ) : (
+              <input
+                id="model"
+                value={model}
+                onChange={(event) => setModel(event.target.value)}
+                placeholder={provider === 'openrouter' ? 'anthropic/claude-3.5-sonnet' : 'claude-sonnet-5'}
+              />
+            )}
+            {provider === 'ollama' && modelsError && <p className="form-error">{modelsError}</p>}
           </div>
 
           {provider === 'ollama' && (
@@ -121,6 +199,7 @@ export default function AdminLlmSettingsPage() {
                 id="baseUrl"
                 value={baseUrl}
                 onChange={(event) => setBaseUrl(event.target.value)}
+                onBlur={handleBaseUrlBlur}
                 placeholder="http://localhost:11434"
               />
             </div>
