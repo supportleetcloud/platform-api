@@ -40,6 +40,19 @@ describe('listOllamaModels', () => {
     await expect(listOllamaModels(fetchImpl, 'http://localhost:11434')).rejects.toThrow()
   })
 
+  it('filters out entries that do not have a string name', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        models: [{ name: 'llama3' }, null, { name: 42 }, {}],
+      }),
+    }) as any
+
+    const models = await listOllamaModels(fetchImpl, 'http://localhost:11434')
+
+    expect(models).toEqual(['llama3'])
+  })
+
   it('returns an empty array when the response body is null', async () => {
     const fetchImpl = jest.fn().mockResolvedValue({
       ok: true,

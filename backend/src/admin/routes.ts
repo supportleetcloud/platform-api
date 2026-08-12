@@ -50,6 +50,7 @@ export function createAdminRouter(prisma: PrismaClient, stripe: Stripe, fetchImp
       const models = await listOllamaModels(fetchImpl, baseUrl)
       res.json({ models })
     } catch (err) {
+      console.error('Failed to list Ollama models:', err)
       res.status(502).json({ error: 'could not reach ollama' })
     }
   })

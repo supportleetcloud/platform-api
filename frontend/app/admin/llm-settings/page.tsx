@@ -36,7 +36,10 @@ export default function AdminLlmSettingsPage() {
   const modelsGenerationRef = useRef(0)
 
   function fetchOllamaModels(url: string) {
-    if (url.trim().length === 0) return
+    if (url.trim().length === 0) {
+      modelsGenerationRef.current++
+      return
+    }
 
     const generation = ++modelsGenerationRef.current
 
@@ -66,6 +69,7 @@ export default function AdminLlmSettingsPage() {
           return
         }
         setOllamaModels(models)
+        setModel((current) => (models.includes(current) ? current : models[0]))
         setModelsLoading(false)
       })
       .catch(() => {
@@ -95,6 +99,7 @@ export default function AdminLlmSettingsPage() {
         fetchOllamaModels(baseUrl)
       }
     } else {
+      modelsGenerationRef.current++
       setOllamaModels([])
       setModelsError(null)
       setModelsLoading(false)

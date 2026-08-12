@@ -159,6 +159,39 @@ describe('AdminLlmSettingsPage', () => {
     })
   })
 
+  it('reconciles the saved model to the first fetched model when the saved model is not in the fetched list, so Save persists the shown model', async () => {
+    mockFetch({
+      me: { status: 200, json: ADMIN_ME },
+      get: {
+        status: 200,
+        json: { provider: 'ollama', model: 'llama3', baseUrl: 'http://localhost:11434', apiKeySet: false },
+      },
+      models: { status: 200, json: { models: ['mistral:latest', 'qwen:7b'] } },
+      put: {
+        status: 200,
+        json: { provider: 'ollama', model: 'mistral:latest', baseUrl: 'http://localhost:11434', apiKeySet: false },
+      },
+    })
+    const user = userEvent.setup()
+
+    render(<AdminLlmSettingsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'qwen:7b' })).toBeInTheDocument()
+    })
+    expect(screen.getByDisplayValue('mistral:latest')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Settings saved.')).toBeInTheDocument()
+    })
+
+    const putCall = (global.fetch as any).mock.calls.find((call: any) => call[1]?.method === 'PUT')
+    const body = JSON.parse(putCall[1].body)
+    expect(body.model).toBe('mistral:latest')
+  })
+
   it('falls back to a text input and shows an error when the ollama models fetch fails', async () => {
     mockFetch({
       me: { status: 200, json: ADMIN_ME },
