@@ -139,6 +139,87 @@ describe('GET/PUT /api/admin/llm-settings', () => {
   })
 })
 
+describe('GET /api/admin/llm-settings/ollama-models', () => {
+  const OLLAMA_ADMIN_USER_ID = 'admin-routes-ollama-test-admin'
+  const OLLAMA_NON_ADMIN_USER_ID = 'admin-routes-ollama-test-non-admin'
+
+  beforeAll(async () => {
+    await prisma.user.upsert({
+      where: { id: OLLAMA_ADMIN_USER_ID },
+      update: { isAdmin: true },
+      create: { id: OLLAMA_ADMIN_USER_ID, githubId: 'gh-admin-routes-ollama-admin', username: 'admin-octocat', isAdmin: true },
+    })
+    await prisma.user.upsert({
+      where: { id: OLLAMA_NON_ADMIN_USER_ID },
+      update: { isAdmin: false },
+      create: { id: OLLAMA_NON_ADMIN_USER_ID, githubId: 'gh-admin-routes-ollama-plain', username: 'plain-octocat', isAdmin: false },
+    })
+  })
+
+  afterAll(async () => {
+    await prisma.user.delete({ where: { id: OLLAMA_ADMIN_USER_ID } }).catch(() => {})
+    await prisma.user.delete({ where: { id: OLLAMA_NON_ADMIN_USER_ID } }).catch(() => {})
+    await prisma.$disconnect()
+  })
+
+  beforeEach(() => {
+    mockAuthUser = { id: OLLAMA_ADMIN_USER_ID, isAdmin: true }
+  })
+
+  it('returns 401 when not authenticated', async () => {
+    const app = createApp({ prisma })
+    const res = await request(app).get('/api/admin/llm-settings/ollama-models?baseUrl=http://localhost:11434')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 403 for an authenticated non-admin', async () => {
+    mockAuthUser = { id: OLLAMA_NON_ADMIN_USER_ID, isAdmin: false }
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get('/api/admin/llm-settings/ollama-models?baseUrl=http://localhost:11434')
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 400 when baseUrl is missing', async () => {
+    const app = createApp({ prisma })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get('/api/admin/llm-settings/ollama-models')
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ error: 'baseUrl is required' })
+  })
+
+  it('returns the model list on success', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ models: [{ name: 'llama3:latest' }] }),
+    }) as any
+    const app = createApp({ prisma, fetchImpl })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get('/api/admin/llm-settings/ollama-models?baseUrl=http://localhost:11434')
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ models: ['llama3:latest'] })
+    const [url] = fetchImpl.mock.calls[0]
+    expect(url).toBe('http://localhost:11434/api/tags')
+  })
+
+  it('returns 502 when ollama is unreachable', async () => {
+    const fetchImpl = jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED')) as any
+    const app = createApp({ prisma, fetchImpl })
+    const agent = request.agent(app)
+    await agent.get('/auth/github/callback')
+
+    const res = await agent.get('/api/admin/llm-settings/ollama-models?baseUrl=http://localhost:11434')
+    expect(res.status).toBe(502)
+    expect(res.body).toEqual({ error: 'could not reach ollama' })
+  })
+})
+
 describe('GET/POST /api/admin/tos/versions', () => {
   const TOS_ADMIN_USER_ID = 'admin-routes-tos-test-admin'
   const TOS_NON_ADMIN_USER_ID = 'admin-routes-tos-test-non-admin'

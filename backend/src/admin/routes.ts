@@ -4,10 +4,11 @@ import Stripe from 'stripe'
 import { requireAuth } from '../auth/middleware'
 import { requireAdmin } from './middleware'
 import { getLlmSettings, saveLlmSettings } from '../llm/settings'
+import { listOllamaModels } from '../llm/ollama'
 import { listVersions, publishVersion } from '../tos/service'
 import { getAdminBillingSettings, updatePrice } from '../billing/service'
 
-export function createAdminRouter(prisma: PrismaClient, stripe: Stripe): Router {
+export function createAdminRouter(prisma: PrismaClient, stripe: Stripe, fetchImpl: typeof fetch): Router {
   const router = Router()
 
   router.get('/api/admin/llm-settings', requireAuth, requireAdmin, async (_req, res) => {
@@ -35,6 +36,21 @@ export function createAdminRouter(prisma: PrismaClient, stripe: Stripe): Router 
     } catch (err) {
       console.error('Failed to save LLM settings:', err)
       res.status(500).json({ error: 'failed to save settings' })
+    }
+  })
+
+  router.get('/api/admin/llm-settings/ollama-models', requireAuth, requireAdmin, async (req, res) => {
+    const baseUrl = typeof req.query.baseUrl === 'string' ? req.query.baseUrl.trim() : ''
+    if (baseUrl.length === 0) {
+      res.status(400).json({ error: 'baseUrl is required' })
+      return
+    }
+
+    try {
+      const models = await listOllamaModels(fetchImpl, baseUrl)
+      res.json({ models })
+    } catch (err) {
+      res.status(502).json({ error: 'could not reach ollama' })
     }
   })
 

@@ -110,7 +110,7 @@ export function createApp(deps: { prisma?: PrismaClient; fetchImpl?: typeof fetc
   app.use(createRunsWebhookRouter(prisma, fetchImpl))
   app.use(createBillingRouter(prisma, stripe, { frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000' }))
   app.use(createBillingWebhookRouter(prisma, stripeWebhookSecret))
-  app.use(createAdminRouter(prisma, stripe))
+  app.use(createAdminRouter(prisma, stripe, fetchImpl))
   app.use(createTosRouter(prisma))
   app.use(createRankingRouter(prisma))
 
