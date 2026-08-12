@@ -98,6 +98,8 @@ export type ChallengeInput = {
 export type SaveChallengeResult =
   | { kind: 'saved'; challengeId: string }
   | { kind: 'validation_error'; error: string }
+  | { kind: 'not_found' }      // updateChallenge only — no such challenge id
+  | { kind: 'file_defined' }   // updateChallenge only — challenge is file-seeded, not editable
 
 export async function createChallenge(prisma: PrismaClient, input: ChallengeInput): Promise<SaveChallengeResult>
 export async function updateChallenge(prisma: PrismaClient, id: string, input: ChallengeInput): Promise<SaveChallengeResult>
